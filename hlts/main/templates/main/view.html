@@ -1,0 +1,9 @@
+<h1>View</h1>
+
+{% for passage in passages %}
+    <div>body: {{ passage.body }}</div>
+    <div>source: {{ passage.source.name }}</div>
+    <div>source: {{ passage.source.author.name }}</div>
+    <div>created: {{ passage.created }}</div>
+    <br>
+{% endfor %}
