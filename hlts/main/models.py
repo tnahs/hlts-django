@@ -3,19 +3,12 @@ import uuid
 from django.db import models
 
 
-def uuid_(prefix=""):
-    """ Genrerate UUID4 with an optional prefix.
-    """
-    print(uuid.uuid4())
-    print(type(uuid.uuid4()))
-    uuid_ = f"{prefix}{uuid.uuid4()}"
-    return uuid_.upper()
-
-
 class Author(models.Model):
 
     name = models.CharField(max_length=256)
     slug = models.SlugField(max_length=256, unique=True)
+    created = models.DateTimeField(auto_now_add=True)
+    pinged = models.DateTimeField(auto_now_add=True)
     # Add a field so we can connect different name configurations
     # Krishnamurti == J Krishnamurit == Jiddu Krishnamurti
 
@@ -32,13 +25,16 @@ class Source(models.Model):
 
     name = models.CharField(max_length=256)
     slug = models.SlugField(max_length=256, unique=True)
-    author = models.ForeignKey(Author, on_delete=models.DO_NOTHING, null=True)
+    author = models.ForeignKey(Author,
+                               on_delete=models.DO_NOTHING)
     title  = models.CharField(max_length=256, blank=True)
     publication  = models.CharField(max_length=256, blank=True)
     chapter  = models.CharField(max_length=256, blank=True)
     date  = models.CharField(max_length=256, blank=True)
     website  = models.CharField(max_length=256, blank=True)
     notes  = models.TextField(blank=True)
+    created = models.DateTimeField(auto_now_add=True)
+    pinged = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ('name', )
@@ -90,28 +86,57 @@ class Tag(models.Model):
 
     name = models.CharField(max_length=256)
     slug = models.SlugField(max_length=256, unique=True)
+    color = models.CharField(max_length=64, blank=True)
+    pinned = models.BooleanField(default=False)
+    description = models.TextField(blank=True)
+    created = models.DateTimeField(auto_now_add=True)
+    pinged = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ('name', )
+        verbose_name = 'tag'
+        verbose_name_plural = 'tags'
 
     def __str__(self):
         return f"<Tag:{self.slug}>"
 
 
+class Collection(models.Model):
+
+    name = models.CharField(max_length=256)
+    slug = models.SlugField(max_length=256, unique=True)
+    color = models.CharField(max_length=64, blank=True)
+    pinned = models.BooleanField(default=False)
+    description = models.TextField(blank=True)
+    created = models.DateTimeField(auto_now_add=True)
+    pinged = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ('name', )
+        verbose_name = 'collection'
+        verbose_name_plural = 'collections'
+
+    def __str__(self):
+        return f"<Collection:{self.slug}>"
+
+
 class Passage(models.Model):
 
-    uuid = models.UUIDField(primary_key=True, default=uuid_, editable=False)
+    uuid = models.UUIDField(default=uuid.uuid4)
     body = models.TextField()
+    tags = models.ManyToManyField(Tag, blank=True)
+    collections = models.ManyToManyField(Collection, blank=True)
     notes  = models.TextField(blank=True)
-    tags = models.ManyToManyField(Tag)
-    # collections = models.ManyToManyField()
     created = models.DateTimeField(auto_now_add=True)
-    modified = models.DateTimeField()
+    modified = models.DateTimeField(auto_now_add=True)
     origin = models.ForeignKey(Origin,
                                on_delete=models.DO_NOTHING,
                                default=default_origin)
-    in_trash = models.BooleanField(default=False)
     is_starred = models.BooleanField(default=False)
-    is_refreshable = models.BooleanField(default=False)
+    is_api_refreshable = models.BooleanField(default=False)
+    in_trash = models.BooleanField(default=False)
     source = models.ForeignKey(Source,
-                               on_delete=models.CASCADE,
+                               on_delete=models.DO_NOTHING,
                                default=default_source)
 
     class Meta:
@@ -124,45 +149,53 @@ class Passage(models.Model):
 
 
 """
-<Passage>
-    uuid
-    body
-    notes
-    created
-    modified
-    <Origin>
-        name
-        slug
-    in_trash
-    is_starred
-    is_refreshable
-    <Tags>
-        name
-        slug
-        color
-        pinned
-        description
+passage:
+    <Passage>
+        uuid
+        body
+        notes
+        tags:
+            <Tag>
+                name
+                slug
+                color
+                pinned
+                description
+                created
+                pinged
+        collections:
+            <Collection>
+                name
+                slug
+                color
+                pinned
+                description
+                created
+                pinged
         created
-        pinged
-    <Collections>
-        name
-        slug
-        color
-        pinned
-        description
-        created
-        pinged
-    <Source>
-        <Author>
-            name
-            slug
-            created
-            pinged
-        title
-        publication
-        chapter
-        date
-        website
-        created
-        pinged
+        modified
+        origin:
+            <Origin>
+                name
+                slug
+        is_starred
+        is_api_refreshable
+        in_trash
+        source:
+            <Source>
+                name
+                slug
+                author:
+                    <Author>
+                        name
+                        slug
+                        created
+                        pinged
+                title
+                publication
+                chapter
+                date
+                website
+                created
+                pinged
 """

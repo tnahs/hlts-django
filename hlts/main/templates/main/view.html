@@ -2,8 +2,16 @@
 
 {% for passage in passages %}
     <div>body: {{ passage.body }}</div>
-    <div>source: {{ passage.source.name }}</div>
-    <div>source: {{ passage.source.author.name }}</div>
+    <div>tags: {{ passage.tags }}</div>
+    <div>collections: {{ passage.collections }}</div>
+    <div>notes: {{ passage.notes }}</div>
+    <div>modified: {{ passage.modified }}</div>
     <div>created: {{ passage.created }}</div>
+    <div>origin: {{ passage.origin.name }}</div>
+    <div>source: {{ passage.source.name }}</div>
+    <div>author: {{ passage.source.author.name }}</div>
+    <div>created: {{ passage.created }}</div>
+    <div>is_starred: {{ passage.is_starred }}</div>
+    <div>in_trash: {{ passage.in_trash }}</div>
     <br>
 {% endfor %}

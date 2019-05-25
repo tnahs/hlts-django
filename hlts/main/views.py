@@ -27,11 +27,6 @@ def add(request):
     else:
         form = PassageForm()
 
-    # mouse = Item(name='G35', description='Logitech')
-    # mouse.save()
-    # mice = Tag.objects.filter(title='mice')
-    # mouse.tags.add(mice)
-
     context = {'form' : form}
 
     return render(request, 'main/add.html', context)

@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Source, Author, Origin, Tag, Passage
+from .models import Source, Author, Origin, Tag, Collection, Passage
 
 
 class AuthorAdmin(admin.ModelAdmin):
@@ -29,6 +29,13 @@ class TagAdmin(admin.ModelAdmin):
     prepopulated_fields = {'slug': ('name', )}
 
 admin.site.register(Tag, TagAdmin)
+
+
+class CollectionAdmin(admin.ModelAdmin):
+    list_populated = ('name', 'slug', )
+    prepopulated_fields = {'slug': ('name', )}
+
+admin.site.register(Collection, CollectionAdmin)
 
 
 admin.site.register(Passage)
