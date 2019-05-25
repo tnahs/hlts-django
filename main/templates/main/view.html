@@ -2,8 +2,16 @@
 
 {% for passage in passages %}
     <div>body: {{ passage.body }}</div>
-    <div>tags: {{ passage.tags }}</div>
-    <div>collections: {{ passage.collections }}</div>
+    <div>tags:
+        {% for tag in passage.tags.all %}
+        <br> -- {{ tag.name }}
+        {% endfor %}
+    </div>
+    <div>collections:
+        {% for collection in passage.collections.all %}
+        <br> -- {{ collection.name }}
+        {% endfor %}
+    </div>
     <div>notes: {{ passage.notes }}</div>
     <div>modified: {{ passage.modified }}</div>
     <div>created: {{ passage.created }}</div>
