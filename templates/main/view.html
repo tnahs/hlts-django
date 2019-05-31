@@ -1,0 +1,18 @@
+{% extends "main/_base.html" %}
+
+{% block body %}
+
+    <h1>Dynamic View</h1>
+
+    <h2>All Passages</h2>
+
+    {% for item in passages %}
+
+        <div>{{ item.passage.body }}</div>
+        <div>{{ item.passage.source }}</div>
+
+        <details>{{ item.form.as_p }}</details>
+
+        {% endfor %}
+
+{% endblock %}

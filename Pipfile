@@ -13,3 +13,9 @@ django-heroku = "*"
 
 [requires]
 python_version = "3.7"
+
+[scripts]
+m = "python manage.py migrate"
+mm = "python manage.py makemigrations"
+cs = "python manage.py createsuperuser"
+rs = "python manage.py runserver"

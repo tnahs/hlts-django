@@ -1,41 +1,67 @@
 from django.contrib import admin
 
-from .models import Source, Author, Origin, Tag, Collection, Passage
+from .models import Origin, Medium, Author, Source, Tag, Collection, Topic, Passage
 
 
-class AuthorAdmin(admin.ModelAdmin):
-    list_populated = ('name', 'slug', )
-    prepopulated_fields = {'slug': ('name', )}
+@admin.register(Origin)
+class AdminOrigin(admin.ModelAdmin):
 
-admin.site.register(Author, AuthorAdmin)
-
-
-class SourceAdmin(admin.ModelAdmin):
-    list_populated = ('name', 'slug', 'author', )
-    prepopulated_fields = {'slug': ('name', )}
-
-admin.site.register(Source, SourceAdmin)
+    search_fields = ["name", ]
 
 
-class OriginAdmin(admin.ModelAdmin):
-    list_populated = ('name', 'slug', )
-    prepopulated_fields = {'slug': ('name', )}
+@admin.register(Medium)
+class AdminMedium(admin.ModelAdmin):
 
-admin.site.register(Origin, OriginAdmin)
-
-
-class TagAdmin(admin.ModelAdmin):
-    list_populated = ('name', 'slug', )
-    prepopulated_fields = {'slug': ('name', )}
-
-admin.site.register(Tag, TagAdmin)
+    search_fields = ["name", ]
 
 
-class CollectionAdmin(admin.ModelAdmin):
-    list_populated = ('name', 'slug', )
-    prepopulated_fields = {'slug': ('name', )}
+@admin.register(Author)
+class AdminAuthor(admin.ModelAdmin):
 
-admin.site.register(Collection, CollectionAdmin)
+    filter_horizontal = ["aka"]
+    search_fields = ["name", ]
 
 
-admin.site.register(Passage)
+@admin.register(Source)
+class AdminSource(admin.ModelAdmin):
+
+    autocomplete_fields = ["medium", ]
+    filter_horizontal = ["authors", ]
+    search_fields = ["name", ]
+
+
+@admin.register(Tag)
+class AdminTag(admin.ModelAdmin):
+    pass
+
+
+@admin.register(Collection)
+class AdminCollection(admin.ModelAdmin):
+    pass
+
+
+@admin.register(Topic)
+class AdminTopic(admin.ModelAdmin):
+    pass
+
+@admin.register(Passage)
+class AdminPassage(admin.ModelAdmin):
+
+    list_display = ["__str__", "source"]
+    readonly_fields = ["uuid", "topics", "created", "modified", "pinged", ]
+    filter_horizontal = ["tags", "collections"]
+    autocomplete_fields = ["source", "origin"]
+    fieldsets = [
+        [
+            "Passage", {
+                "fields": ["body", "notes", "source", "tags", "collections",
+                           "topics"]
+            }
+        ],
+        [
+            "Metadata", {
+                "fields": ["uuid", "origin", "is_starred", "is_refreshable",
+                           "in_trash", "created", "modified", "pinged"],
+            }
+        ]
+    ]
