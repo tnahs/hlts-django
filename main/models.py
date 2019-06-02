@@ -1,12 +1,10 @@
 
 import uuid
-import datetime
+from typing import Union
 
 from django.db import models
-from django.db.models.signals import m2m_changed
-from django.db.utils import IntegrityError
 from django.core.exceptions import ValidationError
-from django.dispatch import receiver
+from django.utils import timezone
 
 
 """
@@ -25,8 +23,6 @@ Basic Passage structure:
                     aka: list[obj] (MtoM)
                         <author>
                             ...
-                    created: datetime
-                    modified: datetime
                     pinged: datetime
             publication:
             url: url
@@ -77,54 +73,6 @@ Basic Passage structure:
 """
 
 
-""" TODO: replace with fixtures """
-
-
-def default_origin():
-
-    try:
-        origin = Origin.objects.get(pk=1)
-    except Origin.DoesNotExist:
-        origin = Origin(name="app")
-        origin.save()
-
-    return origin.pk
-
-
-def default_medium():
-
-    try:
-        medium = Medium.objects.get(pk=1)
-    except Medium.DoesNotExist:
-        medium = Medium(name="Unknown")
-        medium.save()
-
-    return medium.pk
-
-
-def default_source():
-
-    try:
-        source = Source.objects.get(pk=1)
-    except Source.DoesNotExist:
-
-        try:
-            author = Author.objects.get(pk=1)
-        except Author.DoesNotExist:
-            author = Author(name="Unknown")
-            author.save()
-
-        source = Source(name="Unknown")
-        # source.save(commit=False)
-
-        # ns = Source.objects.get(pk=1)
-        source.save()
-        source.authors.add(author)
-        source.save()
-
-    return source.pk
-
-
 class Origin(models.Model):
 
     name = models.CharField(max_length=128, unique=True,)
@@ -160,8 +108,7 @@ class BaseModel(models.Model):
     pinged = models.DateTimeField(auto_now=True)
 
     def ping(self):
-        """ TODO: https://docs.djangoproject.com/en/2.2/topics/i18n/timezones/ """
-        self.pinged = datetime.datetime.utcnow()
+        self.pinged = timezone.now()
 
 
 class Author(BaseModel):
@@ -192,12 +139,8 @@ class Source(BaseModel):
     date = models.DateTimeField(null=True, blank=True)
     notes = models.TextField(blank=True)
     medium = models.ForeignKey(Medium,
-                               default=default_medium,
+                               default=1,
                                on_delete=models.CASCADE)
-
-    @property
-    def authors_as_str(self):
-        return ", ".join([author.name for author in list(self.authors.all())])
 
     def __str__(self):
         return f"{self.name} - {self.authors_as_str}"
@@ -205,39 +148,36 @@ class Source(BaseModel):
     def __repr__(self):
         return f"<{self.__class__.__name__}:{self.name}>"
 
+    @property
+    def authors_as_str(self):
+        return ", ".join([author.name for author in list(self.authors.all())])
 
-@receiver(m2m_changed, sender=Source.authors.through)
-def verify_source_authors_is_unique(sender, **kwargs):
-    """ Signals in Django:
-    https://docs.djangoproject.com/en/2.2/topics/signals/#receiver-functions
-    https://docs.djangoproject.com/en/2.2/ref/signals/#m2m-changed
+    @staticmethod
+    def validate_authors(pk: Union[int, None], name: str, authors: models.QuerySet):
+        """ Custom validatation to make sure no two Sources have the same
+        Source.name and Source.authors. Currently there's no way to set unique
+        constraints that includes ManyToManyFields.
 
-    FIXME: This does not work if the Source name is different and then changed
-    after adding the m2m data.
+        This method *must* be called manually in forms and de-serializers.
 
-    TODO: This works however the error does not bubble up to the user this way.
-    https://stackoverflow.com/a/38167329
-    https://docs.djangoproject.com/en/2.2/ref/forms/validation/#cleaning-and-validating-fields-that-depend-on-each-other
-    """
+        All parameters are related to the Source to be added or edited.
 
-    source = kwargs.get("instance", None)
-    action = kwargs.get("action", None)
-    author_pks = kwargs.get("pk_set", None)
+        pk: Source's primary key
+        name: Source's name
+        authors: Source's new authors
+        """
 
-    if action == "pre_add":
+        similar_sources = Source.objects.filter(name=name).exclude(pk=pk)
 
-        similar_sources = Source.objects.filter(name=source.name)
+        if not similar_sources:
+            return
 
-        for source in similar_sources:
+        new_author_pks = {author.pk for author in authors}
 
-            this_source_author_pks = {a.pk for a in source.authors.all()}
-
-            if this_source_author_pks == author_pks:
-
-                author_set = [a.name for a in Author.objects.filter(pk__in=author_pks)]
-
-                raise IntegrityError(
-                    f"Source '{source.name}' with author set {author_set} already exists.")
+        for similar_source in similar_sources:
+            author_pks = {a.pk for a in similar_source.authors.all()}
+            if author_pks == new_author_pks:
+                raise ValidationError(f"Source with selected author(s) already exists.")
 
 
 class Tag(BaseModel):
@@ -285,14 +225,14 @@ class Passage(BaseModel):
     body = models.TextField()
     notes = models.TextField(blank=True)
     source = models.ForeignKey(Source,
-                                    on_delete=models.CASCADE,
-                                    default=default_source)
+                               on_delete=models.CASCADE,
+                               default=1)
     tags = models.ManyToManyField(Tag, blank=True)
     collections = models.ManyToManyField(Collection, blank=True)
     topics = models.ManyToManyField(Topic, blank=True)
     origin = models.ForeignKey(Origin,
                                on_delete=models.CASCADE,
-                               default=default_origin)
+                               default=1)
     is_starred = models.BooleanField(default=False)
     is_refreshable = models.BooleanField(default=False)
     in_trash = models.BooleanField(default=False)

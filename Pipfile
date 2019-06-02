@@ -9,13 +9,13 @@ flake8 = "*"
 [packages]
 django = "*"
 gunicorn = "*"
-django-heroku = "*"
+dj-database-url = "*"
 
 [requires]
 python_version = "3.7"
 
 [scripts]
-m = "python manage.py migrate"
-mm = "python manage.py makemigrations"
-cs = "python manage.py createsuperuser"
-rs = "python manage.py runserver"
+mm = "python manage.py makemigrations --settings=hlts.settings.dev"
+m = "python manage.py migrate --settings=hlts.settings.dev"
+cs = "python manage.py createsuperuser --settings=hlts.settings.dev"
+rs = "python manage.py runserver --settings=hlts.settings.dev"

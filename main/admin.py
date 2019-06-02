@@ -1,4 +1,6 @@
+from django import forms
 from django.contrib import admin
+from django.core.exceptions import ValidationError
 
 from .models import Origin, Medium, Author, Source, Tag, Collection, Topic, Passage
 
@@ -22,8 +24,25 @@ class AdminAuthor(admin.ModelAdmin):
     search_fields = ["name", ]
 
 
+class AdminSourceForm(forms.ModelForm):
+
+    def clean_authors(self):
+
+        pk = self.instance.pk
+        name = self.cleaned_data.get("name")
+        authors = self.cleaned_data.get("authors")
+
+        try:
+            Source.validate_authors(pk, name, authors)
+        except ValidationError:
+            raise
+
+        return authors
+
+
 @admin.register(Source)
 class AdminSource(admin.ModelAdmin):
+    form = AdminSourceForm
 
     autocomplete_fields = ["medium", ]
     filter_horizontal = ["authors", ]
@@ -43,6 +62,7 @@ class AdminCollection(admin.ModelAdmin):
 @admin.register(Topic)
 class AdminTopic(admin.ModelAdmin):
     pass
+
 
 @admin.register(Passage)
 class AdminPassage(admin.ModelAdmin):
@@ -65,3 +85,4 @@ class AdminPassage(admin.ModelAdmin):
             }
         ]
     ]
+
