@@ -38,7 +38,7 @@ def main():
 
     os.system("python manage.py makemigrations --settings=hlts.settings.dev")
     os.system("python manage.py migrate --settings=hlts.settings.dev")
-    os.system("python manage.py loaddata fixtures/init_defaults.json --settings=hlts.settings.dev")
+    os.system("python manage.py loaddata fixtures/app_defaults.json --settings=hlts.settings.dev")
     os.system("python manage.py loaddata fixtures/dev_defaults.json --settings=hlts.settings.dev")
     os.system("python manage.py runserver --settings=hlts.settings.dev")
 

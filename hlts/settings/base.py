@@ -6,11 +6,12 @@ import pathlib
 SITE_ROOT = pathlib.Path(__file__).parent.parent.parent
 SECRET_KEY = os.getenv("SECRET_KEY")
 
-STATIC_ROOT = SITE_ROOT / "static"
+STATIC_ROOT = SITE_ROOT / "staticfiles"
 STATIC_URL = "/static/"
-# STATICFILES_DIRS = [
-#     SITE_ROOT / "static",
-# ]
+STATICFILES_DIRS = [
+    SITE_ROOT / "static",
+]
+
 FIXTURE_DIRS = [
     SITE_ROOT / "fixtures",
 ]
