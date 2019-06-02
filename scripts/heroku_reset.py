@@ -1,29 +1,36 @@
 #!/usr/bin/env python
 
 import os
+import sys
 
 
-""" TODO: Figure out how to drop all tables in heroku. """
+def main():
+
+    confirm = input("Confirm to hard reset application? [y/N]: ")
+
+    if confirm.lower().strip() != "y":
+        print("Confirmation cancelled.")
+        sys.exit(-1)
+
+    os.system("heroku pg:reset DATABASE_URL --confirm hlts-django --app hlts-django")
+
+    os.system("heroku run \
+            python manage.py migrate \
+            --settings=hlts.settings.prod \
+            --app hlts-django")
+
+    os.system("heroku run \
+            python manage.py loaddata \
+            fixtures/init_defaults.json \
+            --settings=hlts.settings.prod \
+            --app hlts-django")
+
+    os.system("heroku run \
+            python manage.py loaddata \
+            fixtures/prod_defaults.json \
+            --settings=hlts.settings.prod \
+            --app hlts-django")
 
 
-os.system("heroku run \
-          python manage.py migrate \
-          --settings=hlts.settings.prod \
-          --app hlts-django")
-
-os.system("heroku run \
-          python manage.py loaddata \
-          fixtures/init_defaults.json \
-          --settings=hlts.settings.prod \
-          --app hlts-django")
-
-os.system("heroku run \
-          python manage.py loaddata \
-          fixtures/prod_defaults.json \
-          --settings=hlts.settings.prod \
-          --app hlts-django")
-
-os.system("heroku run \
-          python manage.py runserver \
-          --settings=hlts.settings.prod \
-          --app hlts-django")
+if __name__ == "__main__":
+    main()
