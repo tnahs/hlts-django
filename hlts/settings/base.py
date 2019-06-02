@@ -17,7 +17,7 @@ FIXTURE_DIRS = [
 WSGI_APPLICATION = "hlts.wsgi.application"
 ROOT_URLCONF = "hlts.urls"
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*", ]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
