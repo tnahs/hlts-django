@@ -7,7 +7,7 @@ import pathlib
 
 def main():
 
-    root_dir = pathlib.Path(__file__).absolute().parent
+    root_dir = pathlib.Path(__file__).absolute().parent.parent
     migrations_dir = root_dir / "main" / "migrations"
     db_file = root_dir / "db.sqlite3"
 
@@ -15,6 +15,10 @@ def main():
 
     if confirm.lower().strip() != "y":
         print("Confirmation cancelled.")
+        sys.exit(-1)
+
+    if not migrations_dir.exists():
+        print("Folder Not Found: 'main/app/migrations'.")
         sys.exit(-1)
 
     for item in migrations_dir.iterdir():
@@ -38,11 +42,12 @@ def main():
 
     os.system("python manage.py makemigrations --settings=hlts.settings.dev")
     os.system("python manage.py migrate --settings=hlts.settings.dev")
+    os.system("python manage.py collectstatic --no-input --settings=hlts.settings.dev")
     os.system("python manage.py loaddata fixtures/app_defaults.json --settings=hlts.settings.dev")
     os.system("python manage.py loaddata fixtures/dev_defaults.json --settings=hlts.settings.dev")
     os.system("python manage.py runserver --settings=hlts.settings.dev")
 
-    print("App reset!")
+    print("Success: app reset!")
 
 
 if __name__ == "__main__":

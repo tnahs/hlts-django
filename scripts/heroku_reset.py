@@ -3,6 +3,9 @@
 import os
 
 
+""" TODO: Figure out how to drop all tables in heroku. """
+
+
 os.system("heroku run \
           python manage.py migrate \
           --settings=hlts.settings.prod \

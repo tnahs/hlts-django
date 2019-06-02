@@ -5,7 +5,7 @@ heroku run python manage.py makemigrations --app hlts-django
 heroku run python manage.py migrate --app hlts-django
 heroku run python manage.py createsuperuser --app hlts-django
 
-# dumpdata
+# Django dumpdata
 
 python manage.py dumpdata \
     --indent 4 \
