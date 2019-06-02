@@ -7,7 +7,7 @@ import sys
 def main():
     """ TODO: This might cause problems in prod. """
 
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "hlts.settings")
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "hlts.settings.base")
 
     try:
         from django.core.management import execute_from_command_line
