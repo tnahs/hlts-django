@@ -5,17 +5,15 @@ import sys
 import pathlib
 
 
+APP_NAME = "hlts"
+
+
 def main():
 
-    root_dir = pathlib.Path(__file__).absolute().parent.parent
+    root_dir = pathlib.Path(__file__).parent.parent
     migrations_dir = root_dir / "main" / "migrations"
     db_file = root_dir / "db.sqlite3"
-
-    confirm = input("Confirm to hard reset application? [y/N]: ")
-
-    if confirm.lower().strip() != "y":
-        print("Confirmation cancelled.")
-        sys.exit(-1)
+    fixtures_dir = root_dir / "fixtures"
 
     if not migrations_dir.exists():
         print("Folder Not Found: 'main/app/migrations'.")
@@ -40,15 +38,27 @@ def main():
     except Exception:
         raise
 
-    os.system("python manage.py collectstatic --no-input --settings=hlts.settings.dev")
-    os.system("python manage.py makemigrations --settings=hlts.settings.dev")
-    os.system("python manage.py migrate --settings=hlts.settings.dev")
-    os.system("python manage.py loaddata fixtures/app_defaults.json --settings=hlts.settings.dev")
-    os.system("python manage.py loaddata fixtures/dev_defaults.json --settings=hlts.settings.dev")
-    os.system("python manage.py runserver --settings=hlts.settings.dev")
+    os.system(f"python manage.py collectstatic --settings={APP_NAME}.settings.dev --no-input")
 
-    print("Success: app reset!")
+    os.system(f"python manage.py makemigrations --settings={APP_NAME}.settings.dev")
+
+    os.system(f"python manage.py migrate --settings={APP_NAME}.settings.dev")
+
+    for item in fixtures_dir.iterdir():
+        if item.is_file() and item.suffix == ".json":
+            os.system(f"python manage.py loaddata {item} --settings={APP_NAME}.settings.dev")
+
+    os.system(f"python manage.py runserver --settings={APP_NAME}.settings.dev")
+
+    print(f"{APP_NAME} successfully reset!")
 
 
 if __name__ == "__main__":
+
+    confirm = input(f"Confirm to hard reset {APP_NAME}. [y/N]: ")
+
+    if confirm.lower().strip() != "y":
+        print("Hard reset cancelled.")
+        sys.exit(-1)
+
     main()
