@@ -1,9 +1,8 @@
 ``` shell
 # Heroku commands
 
-heroku run python manage.py makemigrations --app hlts-django
-heroku run python manage.py migrate --app hlts-django
-heroku run python manage.py createsuperuser --app hlts-django
+heroku run <command> --settings=hlts.settings.prod
+
 
 # Django dumpdata
 
@@ -15,5 +14,10 @@ python manage.py dumpdata \
     > db.json
 
 python manage.py loaddata db.json
+
+
+# Django
+
+python manage.py shell --settings=hlts.settings.dev
 
 ```

@@ -4,7 +4,9 @@ from typing import Union
 
 from django.db import models
 from django.contrib.auth.models import User
+from django.db.models.signals import post_save
 from django.core.exceptions import ValidationError
+from django.dispatch import receiver
 from django.utils import timezone
 
 """
@@ -81,7 +83,7 @@ class Origin(models.Model):
     owner = models.ForeignKey(User,
                               related_name="origins",
                               on_delete=models.CASCADE)
-    name = models.CharField(max_length=128, unique=True,)
+    name = models.CharField(max_length=128)
 
     def __str__(self):
         return self.name
@@ -168,7 +170,7 @@ class Source(BaseModel):
         return f"{self.name} - {self.authors_as_str}"
 
     def __repr__(self):
-        return f"<{self.__class__.__name__}:{self.name}>"
+        return f"<{self.__class__.__name__}:{self.name} - {self.authors_as_str}>"
 
     @property
     def authors_as_str(self):
@@ -179,7 +181,7 @@ class Source(BaseModel):
                          source_authors: models.QuerySet):
         """ Custom validatation to make sure no two Sources have the same
         Source.name and Source.authors. Currently there's no way to set unique
-        constraints that includes ManyToManyFields.
+        constraints that includes ManyToManyFields in Django.
 
         This method *must* be called manually in forms and APIs.
 
@@ -190,7 +192,8 @@ class Source(BaseModel):
         source_authors: Source's new authors
         """
 
-        # Return a QuerySet with this Source's name and exclude this Source.
+        # Return a QuerySet of all Source's with the same name as this source
+        # while excluding this Source.
         sources = Source.objects.filter(name=source_name).exclude(pk=source_pk)
 
         if not sources:
@@ -198,8 +201,8 @@ class Source(BaseModel):
 
         new_author_pk_set = {author.pk for author in source_authors}
 
-        # Check Author primary key set against all similar sources. If
-        # there are any Sources that have the same name and the same Author
+        # Check the Author primary key set against those of all found sources.
+        # If there are any Sources that have the same name and the same Author
         # primary key set then raise a ValidationError.
         for source in sources:
             existing_author_pk_set = {author.pk for author in source.authors.all()}
@@ -293,3 +296,30 @@ class Passage(BaseModel):
 
     def __repr__(self):
         return f"<{self.__class__.__name__}:{self.uuid}>"
+
+
+@receiver(post_save, sender=User)
+def init_new_user(instance: User, created: bool, raw: bool, **kwargs):
+    """
+    via https://docs.djangoproject.com/en/2.2/ref/signals/
+
+    created: True if a new record was created.
+    raw: True if the model is saved exactly as presented i.e. when loading a
+    fixture. One should not query/modify other records in the database as the
+    database might not be in a consistent state yet.
+    """
+
+    if created and not raw:
+
+        origin = Origin.objects.create(name="app", owner=instance)
+        origin.save()
+
+        medium = Medium.objects.create(name="Unknown", owner=instance)
+        medium.save()
+
+        author = Author.objects.create(name="Unknown", owner=instance)
+        author.save()
+
+        source = Source.objects.create(name="Unknown", medium=medium, owner=instance)
+        source.authors.add(author)
+        source.save()

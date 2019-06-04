@@ -12,9 +12,58 @@
             "email": "shant.ergenian@gmail.com",
             "is_staff": true,
             "is_active": true,
-            "date_joined": "2019-06-01T19:38:10.806Z",
+            "date_joined": "0001-01-01T00:00:00.00Z",
             "groups": [],
             "user_permissions": []
+        }
+    },
+    {
+        "model": "main.origin",
+        "pk": 1,
+        "fields": {
+            "owner": 1,
+            "name": "dev-app"
+        }
+    },
+    {
+        "model": "main.medium",
+        "pk": 1,
+        "fields": {
+            "owner": 1,
+            "name": "DevUnknown"
+        }
+    },
+    {
+        "model": "main.author",
+        "pk": 1,
+        "fields": {
+            "created": "0001-01-01T00:00:00.00Z",
+            "modified": "0001-01-01T00:00:00.00Z",
+            "pinged": "0001-01-01T00:00:00.00Z",
+            "owner": 1,
+            "name": "DevUnknown",
+            "first_name": "",
+            "last_name": "",
+            "aka": []
+        }
+    },
+    {
+        "model": "main.source",
+        "pk": 1,
+        "fields": {
+            "created": "0001-01-01T00:00:00.00Z",
+            "modified": "0001-01-01T00:00:00.00Z",
+            "pinged": "0001-01-01T00:00:00.00Z",
+            "owner": 1,
+            "name": "DevUnknown",
+            "publication": "",
+            "url": "",
+            "date": null,
+            "notes": "",
+            "medium": 1,
+            "authors": [
+                1
+            ]
         }
     }
 ]
