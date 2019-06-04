@@ -175,30 +175,35 @@ class Source(BaseModel):
         return ", ".join([author.name for author in list(self.authors.all())])
 
     @staticmethod
-    def validate_authors(pk: Union[int, None], name: str, authors: models.QuerySet):
+    def validate_authors(source_pk: Union[int, None], source_name: str,
+                         source_authors: models.QuerySet):
         """ Custom validatation to make sure no two Sources have the same
         Source.name and Source.authors. Currently there's no way to set unique
         constraints that includes ManyToManyFields.
 
-        This method *must* be called manually in forms and de-serializers.
+        This method *must* be called manually in forms and APIs.
 
         All parameters are related to the Source to be added or edited.
 
-        pk: Source's primary key
-        name: Source's name
-        authors: Source's new authors
+        source_pk: Source's primary key
+        source_name: Source's name
+        source_authors: Source's new authors
         """
 
-        similar_sources = Source.objects.filter(name=name).exclude(pk=pk)
+        # Return a QuerySet with this Source's name and exclude this Source.
+        sources = Source.objects.filter(name=source_name).exclude(pk=source_pk)
 
-        if not similar_sources:
+        if not sources:
             return
 
-        new_author_pks = {author.pk for author in authors}
+        new_author_pk_set = {author.pk for author in source_authors}
 
-        for similar_source in similar_sources:
-            author_pks = {a.pk for a in similar_source.authors.all()}
-            if author_pks == new_author_pks:
+        # Check Author primary key set against all similar sources. If
+        # there are any Sources that have the same name and the same Author
+        # primary key set then raise a ValidationError.
+        for source in sources:
+            existing_author_pk_set = {author.pk for author in source.authors.all()}
+            if existing_author_pk_set == new_author_pk_set:
                 raise ValidationError(f"Source with selected author(s) already exists.")
 
 
