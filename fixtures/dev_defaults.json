@@ -1,15 +1,15 @@
 [
     {
         "model": "auth.user",
-        "pk": 2,
+        "pk": 1,
         "fields": {
             "password": "pbkdf2_sha256$150000$01B9IhJeDsLU$M98Gr8wh2S70TCsz3YoW+4GGIFWOXeU45koVGrIy4Y8=",
             "last_login": null,
             "is_superuser": true,
             "username": "shant",
-            "first_name": "",
-            "last_name": "",
-            "email": "",
+            "first_name": "Shant",
+            "last_name": "Ergenian",
+            "email": "shant.ergenian@gmail.com",
             "is_staff": true,
             "is_active": true,
             "date_joined": "2019-06-01T19:38:10.806Z",

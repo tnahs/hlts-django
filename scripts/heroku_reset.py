@@ -14,6 +14,10 @@ def main():
     root_dir = pathlib.Path(__file__).parent.parent
     fixtures_dir = root_dir / "fixtures"
 
+    if not fixtures_dir.exists():
+        print(f"Fixtures folder not found: {fixtures_dir}.")
+        sys.exit(-1)
+
     os.system(f"heroku pg:reset DATABASE_URL --confirm {APP_NAME_HEROKU} --app {APP_NAME_HEROKU}")
 
     os.system(f"heroku run --app {APP_NAME_HEROKU} \

@@ -16,7 +16,11 @@ def main():
     fixtures_dir = root_dir / "fixtures"
 
     if not migrations_dir.exists():
-        print("Folder Not Found: 'main/app/migrations'.")
+        print(f"Migrations folder not found: {migrations_dir}.")
+        sys.exit(-1)
+
+    if not fixtures_dir.exists():
+        print(f"Fixtures folder not found: {fixtures_dir}.")
         sys.exit(-1)
 
     for item in migrations_dir.iterdir():
