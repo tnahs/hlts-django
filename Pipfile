@@ -16,7 +16,7 @@ whitenoise = "*"
 python_version = "3.7"
 
 [scripts]
-mm = "python manage.py makemigrations --settings=hlts.settings.dev"
-m = "python manage.py migrate --settings=hlts.settings.dev"
-cs = "python manage.py createsuperuser --settings=hlts.settings.dev"
-rs = "python manage.py runserver --settings=hlts.settings.dev"
+mm = "python manage.py makemigrations --settings=config.settings.development"
+m = "python manage.py migrate --settings=config.settings.development"
+cs = "python manage.py createsuperuser --settings=config.settings.development"
+rs = "python manage.py runserver --settings=config.settings.development"

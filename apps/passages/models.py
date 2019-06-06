@@ -3,11 +3,12 @@ import uuid
 from typing import Union
 
 from django.db import models
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.db.models.signals import post_save
 from django.core.exceptions import ValidationError
 from django.dispatch import receiver
 from django.utils import timezone
+
 
 """
 Basic Passage structure:
@@ -80,7 +81,7 @@ class Origin(models.Model):
     class Meta:
         unique_together = ["owner", "name"]
 
-    owner = models.ForeignKey(User,
+    owner = models.ForeignKey(get_user_model(),
                               related_name="origins",
                               on_delete=models.CASCADE)
     name = models.CharField(max_length=128)
@@ -98,7 +99,7 @@ class Medium(models.Model):
         verbose_name_plural = "media"
         unique_together = ["owner", "name"]
 
-    owner = models.ForeignKey(User,
+    owner = models.ForeignKey(get_user_model(),
                               related_name="media",
                               on_delete=models.CASCADE)
     name = models.CharField(max_length=128)
@@ -130,7 +131,7 @@ class Author(BaseModel):
     class Meta:
         unique_together = ["owner", "name"]
 
-    owner = models.ForeignKey(User,
+    owner = models.ForeignKey(get_user_model(),
                               related_name="authors",
                               on_delete=models.CASCADE)
     name = models.CharField(max_length=256)
@@ -153,7 +154,7 @@ class Source(BaseModel):
     class Meta:
         unique_together = ["owner", "name"]
 
-    owner = models.ForeignKey(User,
+    owner = models.ForeignKey(get_user_model(),
                               related_name="sources",
                               on_delete=models.CASCADE)
     name = models.CharField(max_length=256)
@@ -215,7 +216,7 @@ class Tag(BaseModel):
     class Meta:
         unique_together = ["owner", "name"]
 
-    owner = models.ForeignKey(User,
+    owner = models.ForeignKey(get_user_model(),
                               related_name="tags",
                               on_delete=models.CASCADE)
     name = models.CharField(max_length=64)
@@ -235,7 +236,7 @@ class Collection(BaseModel):
     class Meta:
         unique_together = ["owner", "name"]
 
-    owner = models.ForeignKey(User,
+    owner = models.ForeignKey(get_user_model(),
                               related_name="collections",
                               on_delete=models.CASCADE)
     name = models.CharField(max_length=64)
@@ -255,7 +256,7 @@ class Topic(BaseModel):
     class Meta:
         unique_together = ["owner", "name"]
 
-    owner = models.ForeignKey(User,
+    owner = models.ForeignKey(get_user_model(),
                               related_name="topics",
                               on_delete=models.CASCADE)
     name = models.CharField(max_length=64)
@@ -272,7 +273,7 @@ class Passage(BaseModel):
     class Meta:
         unique_together = ["owner", "uuid"]
 
-    owner = models.ForeignKey(User,
+    owner = models.ForeignKey(get_user_model(),
                               related_name="passages",
                               on_delete=models.CASCADE)
     uuid = models.UUIDField(default=uuid.uuid4, unique=True)
@@ -298,9 +299,14 @@ class Passage(BaseModel):
         return f"<{self.__class__.__name__}:{self.uuid}>"
 
 
+User = get_user_model()
+
+
 @receiver(post_save, sender=User)
 def init_new_user(instance: User, created: bool, raw: bool, **kwargs):
     """
+    Create default objects for new users.
+
     via https://docs.djangoproject.com/en/2.2/ref/signals/
 
     created: True if a new record was created.
@@ -309,17 +315,18 @@ def init_new_user(instance: User, created: bool, raw: bool, **kwargs):
     database might not be in a consistent state yet.
     """
 
-    if created and not raw:
+    if not created or raw:
+        return
 
-        origin = Origin.objects.create(name="app", owner=instance)
-        origin.save()
+    origin = Origin.objects.create(name="app", owner=instance)
+    origin.save()
 
-        medium = Medium.objects.create(name="Unknown", owner=instance)
-        medium.save()
+    medium = Medium.objects.create(name="Unknown", owner=instance)
+    medium.save()
 
-        author = Author.objects.create(name="Unknown", owner=instance)
-        author.save()
+    author = Author.objects.create(name="Unknown", owner=instance)
+    author.save()
 
-        source = Source.objects.create(name="Unknown", medium=medium, owner=instance)
-        source.authors.add(author)
-        source.save()
+    source = Source.objects.create(name="Unknown", medium=medium, owner=instance)
+    source.authors.add(author)
+    source.save()

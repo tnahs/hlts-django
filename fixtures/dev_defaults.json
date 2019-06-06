@@ -1,6 +1,6 @@
 [
     {
-        "model": "auth.user",
+        "model": "users.user",
         "pk": 1,
         "fields": {
             "password": "pbkdf2_sha256$150000$01B9IhJeDsLU$M98Gr8wh2S70TCsz3YoW+4GGIFWOXeU45koVGrIy4Y8=",
@@ -18,7 +18,7 @@
         }
     },
     {
-        "model": "main.origin",
+        "model": "passages.origin",
         "pk": 1,
         "fields": {
             "owner": 1,
@@ -26,7 +26,7 @@
         }
     },
     {
-        "model": "main.medium",
+        "model": "passages.medium",
         "pk": 1,
         "fields": {
             "owner": 1,
@@ -34,7 +34,7 @@
         }
     },
     {
-        "model": "main.author",
+        "model": "passages.author",
         "pk": 1,
         "fields": {
             "created": "0001-01-01T00:00:00.00Z",
@@ -48,7 +48,7 @@
         }
     },
     {
-        "model": "main.source",
+        "model": "passages.source",
         "pk": 1,
         "fields": {
             "created": "0001-01-01T00:00:00.00Z",

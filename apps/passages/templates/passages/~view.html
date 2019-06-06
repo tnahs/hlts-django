@@ -1,0 +1,206 @@
+{% extends "main/_base.html" %}
+
+{% block body %}
+
+    <h1>Dynamic View</h1>
+
+    <h2>All Passages</h2>
+
+    <style>
+
+        input:read-only,
+        textarea:read-only {
+            color: gray;
+            background-color: #FAFAFA;
+        }
+
+    </style>
+
+    {% for item in passages %}
+
+        {# View passage #}
+        {{ item.passage.body }}
+        <br>notes: {{ item.passage.notes }}
+        <br>tags: {% for t in item.passage.tags.all %} {{ t.name }} {% endfor %}
+        <br>collections: {% for c in item.passage.collections.all %} {{ c.name }} {% endfor %}
+        <br>is_starred: {{ item.passage.is_starred }}
+        <br>in_trash: {{ item.passage.in_trash }}
+        <br>is_refreshable: {{ item.passage.is_refreshable }}
+        <br>source: {{ item.passage.source.name }}
+        <br>author: {{ item.passage.source.author.name }}
+        <br><button class="edit-form-toggle" uuid="{{ item.passage.uuid }}">Edit</button>
+
+        <br>
+
+        {# Edit passage #}
+        <div id="{{ item.passage.uuid }}" style="display: none">
+
+            {% csrf_token %}
+
+            <hr style="opacity: .25">
+
+            <form id="passage-form-{{ item.passage.uuid }}">
+
+                <div>{{ item.form.body.label }}: {{ item.form.body }}</div>
+                <div>{{ item.form.tags.label }}: {{ item.form.tags }}</div>
+                <div>{{ item.form.collections.label }}: {{ item.form.collections }}</div>
+                <div>{{ item.form.notes.label }}: {{ item.form.notes }}</div>
+                <div>{{ item.form.origin.label }}: {{ item.form.origin }}</div>
+                <div>{{ item.form.is_starred.label }}: {{ item.form.is_starred }}</div>
+                <div>{{ item.form.in_trash.label }}: {{ item.form.in_trash }}</div>
+                <div>{{ item.form.is_refreshable.label }}: {{ item.form.is_refreshable }}</div>
+
+                <select class="source-form-toggle" uuid="{{ item.passage.uuid }}">
+                    <option value="current">{{ item.passage.source.name }} - {{ item.passage.source.author.name }}</option>
+                    <option value="edit">Edit Source</option>
+                    <option value="new">New Source</option>
+                {% for source in all_sources %}
+                    <option value="{{ source.id }}">{{ source.name }} - {{ source.author.name }}</option>
+                {% endfor %}
+                </select>
+
+                <div id="source-form-{{ item.passage.uuid }}">
+                    <div>{{ item.form.source.label }}: {{ item.form.source }}</div>
+                    <div>{{ item.form.author.label }}: {{ item.form.author }}</div>
+                    <div>{{ item.form.title.label }}: {{ item.form.title }}</div>
+                    <div>{{ item.form.publication.label }}: {{ item.form.publication }}</div>
+                    <div>{{ item.form.chapter.label }}: {{ item.form.chapter }}</div>
+                    <div>{{ item.form.date.label }}: {{ item.form.date }}</div>
+                    <div>{{ item.form.website.label }}: {{ item.form.website }}</div>
+                    <div>{{ item.form.notes.label }}: {{ item.form.notes }}</div>
+                </div>
+
+            </form>
+
+            <button type="button" class="edit-form-save" uuid="{{ item.passage.uuid }}">Save</button>
+
+        </div>
+
+        <hr>
+
+    {% endfor %}
+
+    <script>
+
+        const sourceFormToggleButtons = document.querySelectorAll(".source-form-toggle")
+
+        for (let sourceFormToggleButton of sourceFormToggleButtons) {
+
+            sourceFormToggleButton.addEventListener("change", ( ) => {
+
+                const thisUUID = sourceFormToggleButton.getAttribute("uuid")
+                const thisSourceEditDiv = document.querySelector(`[id="source-form-${thisUUID}"]`)
+                const thisSourceEditFields = thisSourceEditDiv.querySelectorAll("input, textarea")
+
+                // Keep current source:
+                // Reset the each field to its inital value and make read-only.
+                if (sourceFormToggleButton.value == "current") {
+
+                    thisSourceEditDiv.style.display = "block"
+
+                    for (let field of thisSourceEditFields) {
+                        field.readOnly = true
+                    }
+                }
+                // Edit current source:
+                // Unlock each field.
+                else if (sourceFormToggleButton.value == "edit") {
+
+                    thisSourceEditDiv.style.display = "block"
+
+                    for (let field of thisSourceEditFields) {
+                        field.readOnly = false
+                    }
+                }
+                // Create new source:
+                // Unlock each field and clear its value.
+                else if (sourceFormToggleButton.value == "new") {
+
+                    thisSourceEditDiv.style.display = "block"
+
+                    for (let field of thisSourceEditFields) {
+                        field.readOnly = false
+                        field.value = ""
+                    }
+                }
+                // Select existing source.
+                // TODO: This needs to have the source data populate the form.
+                else {
+
+                    thisSourceEditDiv.style.display = "none"
+
+                    for (let field of thisSourceEditFields) {
+                        field.readOnly = true
+                    }
+                }
+
+            })
+
+        }
+
+        const csrfToken = document.querySelector("input[name='csrfmiddlewaretoken']").value
+
+        const editFormToggleButtons = document.querySelectorAll(".edit-form-toggle")
+
+        for (let editFormToggleButton of editFormToggleButtons) {
+
+            editFormToggleButton.addEventListener("click", ( ) => {
+
+                const thisUUID = editFormToggleButton.getAttribute("uuid")
+                const thisEditDiv = document.querySelector(`[id="${thisUUID}"]`)
+
+                if (thisEditDiv.style.display == "none") {
+
+                    editFormToggleButton.innerText = "Cancel"
+                    thisEditDiv.style.display = "block"
+                }
+                else {
+
+                    editFormToggleButton.innerText = "Edit"
+                    thisEditDiv.style.display = "none"
+                }
+            })
+        }
+
+        const editFormSaveButtons = document.querySelectorAll(".edit-form-save")
+
+        for (let editFormSaveButton of editFormSaveButtons) {
+
+            editFormSaveButton.addEventListener("click", ( ) => {
+
+                const thisUUID = editFormSaveButton.getAttribute("uuid")
+                const thisEditForm = document.querySelector(`form[id="passage-form-${thisUUID}"]`)
+                const thisEditFormData = new FormData(thisEditForm)
+
+                fetchSavePassage(thisUUID, thisEditFormData, csrfToken)
+            })
+        }
+
+        function fetchSavePassage(uuid, formData, csrfToken) {
+
+            fetch(`/save/${uuid}`, {
+                method: "POST",
+                credentials: "same-origin",
+                headers: {
+                    "X-CSRFToken": csrfToken,
+                },
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+
+                    /* TODO: The revceiced data is then used to update the view of
+                    the currently updated passage.
+                    */
+                    console.log(data)
+                }
+            )
+            .catch((error) => {
+
+                console.log(error)
+            })
+        }
+
+    </script>
+
+{% endblock %}

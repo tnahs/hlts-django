@@ -1,7 +1,7 @@
 ``` shell
 # Heroku commands
 
-heroku run <command> --settings=hlts.settings.prod
+heroku run <command> --settings=config.settings.production
 
 
 # Django dumpdata
@@ -10,7 +10,7 @@ python manage.py dumpdata \
     --indent 4 \
     --exclude auth.permission \
     --exclude contenttypes \
-    --settings=hlts.settings.dev \
+    --settings=config.settings.development \
     > db.json
 
 python manage.py loaddata db.json
@@ -18,6 +18,6 @@ python manage.py loaddata db.json
 
 # Django
 
-python manage.py shell --settings=hlts.settings.dev
+python manage.py shell --settings=config.settings.development
 
 ```

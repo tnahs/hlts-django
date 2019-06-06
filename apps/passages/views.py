@@ -8,7 +8,7 @@ from .forms import PassageForm
 
 
 def index(request):
-    return render(request, 'main/index.html')
+    return render(request, "passages/index.html")
 
 
 def view(request):
@@ -19,17 +19,17 @@ def view(request):
     passages = []
     for passage in view_passages:
         passages.append({
-            'uuid': passage.uuid,
-            'passage': passage,
-            'form': PassageForm(instance=passage)
+            "uuid": passage.uuid,
+            "passage": passage,
+            "form": PassageForm(instance=passage)
         })
 
     context = {
-        'passages': passages,
-        'all_sources': all_sources
+        "passages": passages,
+        "all_sources": all_sources
     }
 
-    return render(request, 'main/view.html', context)
+    return render(request, "passages/view.html", context)
 
 
 @require_POST
@@ -62,20 +62,20 @@ def save(request, uuid):
 
 def add(request):
 
-    if request.method == 'POST':
+    if request.method == "POST":
 
         form = PassageForm(request.POST)
 
         if form.is_valid():
             form.save()
-            return redirect('view')
+            return redirect("view")
 
     else:
 
         form = PassageForm()
 
     context = {
-        'form': form,
+        "form": form,
     }
 
-    return render(request, 'main/add.html', context)
+    return render(request, "passages/add.html", context)

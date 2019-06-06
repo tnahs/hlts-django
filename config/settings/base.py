@@ -16,10 +16,16 @@ FIXTURE_DIRS = [
     SITE_ROOT / "fixtures",
 ]
 
-WSGI_APPLICATION = "hlts.wsgi.application"
-ROOT_URLCONF = "hlts.urls"
+WSGI_APPLICATION = "config.wsgi.application"
+ROOT_URLCONF = "config.urls"
 
 ALLOWED_HOSTS = ["*", ]
+
+AUTH_USER_MODEL = "users.User"
+
+# LOGIN_URL = "login"
+# LOGIN_REDIRECT_URL = "profile"
+# LOGOUT_REDIRECT_URL = "homepage"
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -28,7 +34,10 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "main",
+
+    # Local apps
+    "apps.users.apps.UsersConfig",
+    "apps.passages.apps.PassagesConfig",
 ]
 
 MIDDLEWARE = [
@@ -46,8 +55,8 @@ MIDDLEWARE = [
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [SITE_ROOT / "templates"],
         "APP_DIRS": True,
+        "DIRS": [SITE_ROOT / "templates", ],
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.debug",
