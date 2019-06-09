@@ -1,18 +1,18 @@
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 
-from .models import User
+from .models import AppUser
 
 
-class MainUserCreationForm(UserCreationForm):
+class AppUserCreationForm(UserCreationForm):
 
     class Meta(UserCreationForm):
-        model = User
+        model = AppUser
         fields = "__all__"
-        # fields = UserCreationForm.Meta.fields + ("custom_field",)
+        # fields = UserCreationForm.Meta.fields + ("custom_fields",)
 
 
-class MainUserChangeForm(UserChangeForm):
+class AppUserChangeForm(UserChangeForm):
 
     class Meta:
-        model = User
+        model = AppUser
         fields = "__all__"

@@ -21,11 +21,7 @@ ROOT_URLCONF = "config.urls"
 
 ALLOWED_HOSTS = ["*", ]
 
-AUTH_USER_MODEL = "users.User"
-
-# LOGIN_URL = "login"
-# LOGIN_REDIRECT_URL = "profile"
-# LOGOUT_REDIRECT_URL = "homepage"
+AUTH_USER_MODEL = "users.AppUser"
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -35,7 +31,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
 
-    # Local apps
+    # local apps
+    "apps.api.apps.ApiConfig",
     "apps.users.apps.UsersConfig",
     "apps.passages.apps.PassagesConfig",
 ]
@@ -66,14 +63,6 @@ TEMPLATES = [
             ],
         },
     },
-]
-
-
-AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator", },
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", },
-    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator", },
-    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator", },
 ]
 
 LANGUAGE_CODE = "en-us"

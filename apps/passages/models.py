@@ -7,73 +7,6 @@ from django.contrib.auth import get_user_model
 from django.db.models.signals import post_save
 from django.core.exceptions import ValidationError
 from django.dispatch import receiver
-from django.utils import timezone
-
-
-"""
-Basic Passage structure:
-
-<passage>
-    uuid: uuid
-    body: string
-    notes: string
-    source: obj (OtoM)
-        <source>
-            name: string
-            authors: list[obj] (MtoM)
-                <author>
-                    name: string
-                    aka: list[obj] (MtoM)
-                        <author>
-                            ...
-                    pinged: datetime
-            publication:
-            url: url
-            date: datetime
-            notes: string
-            medium: obj (OtoM)
-                <medium>
-                    name: string
-            created: datetime
-            modified: datetime
-            pinged: datetime
-    tags: list[obj] (MtoM)
-        <tag>
-            name: string
-            color: string
-            description: string
-            pinned: bool
-            created: datetime
-            modified: datetime
-            pinged: datetime
-    collections: list[obj] (MtoM)
-        <collection>
-            name: string
-            color: string
-            pinned: bool
-            description: string
-            created: datetime
-            modified: datetime
-            pinged: datetime
-    topics: list[obj] (MtoM)
-        <topic>
-            name: string
-            created: datetime
-            modified: datetime
-            pinged: datetime
-    origin: obj (OtoM)
-        <origin>
-            name: string
-            created: datetime
-            modified: datetime
-            pinged: datetime
-    is_starred: bool
-    is_refreshable: bool
-    is_trash: bool
-    created: datetime
-    modified: datetime
-    pinged: datetime
-"""
 
 
 class Origin(models.Model):
@@ -84,6 +17,8 @@ class Origin(models.Model):
     owner = models.ForeignKey(get_user_model(),
                               related_name="origins",
                               on_delete=models.CASCADE)
+
+    # Origin
     name = models.CharField(max_length=128)
 
     def __str__(self):
@@ -102,6 +37,8 @@ class Medium(models.Model):
     owner = models.ForeignKey(get_user_model(),
                               related_name="media",
                               on_delete=models.CASCADE)
+
+    # Medium
     name = models.CharField(max_length=128)
 
     def __str__(self):
@@ -116,12 +53,8 @@ class BaseModel(models.Model):
     class Meta:
         abstract = True
 
-    created = models.DateTimeField(auto_now_add=True)
-    modified = models.DateTimeField(auto_now=True)
-    pinged = models.DateTimeField(auto_now=True)
-
-    def ping(self):
-        self.pinged = timezone.now()
+    date_created = models.DateTimeField(auto_now_add=True)
+    date_modified = models.DateTimeField(auto_now=True)
 
 
 class Author(BaseModel):
@@ -134,6 +67,8 @@ class Author(BaseModel):
     owner = models.ForeignKey(get_user_model(),
                               related_name="authors",
                               on_delete=models.CASCADE)
+
+    # Author
     name = models.CharField(max_length=256)
     first_name = models.CharField(max_length=256, blank=True)
     last_name = models.CharField(max_length=256, blank=True)
@@ -144,6 +79,12 @@ class Author(BaseModel):
 
     def __repr__(self):
         return f"<{self.__class__.__name__}:{self.name}>"
+
+    @property
+    def full_name(self):
+        if self.first_name and self.last_name:
+            return f"{self.first_name} {self.last_name}"
+        return self.name
 
 
 class Source(BaseModel):
@@ -157,6 +98,8 @@ class Source(BaseModel):
     owner = models.ForeignKey(get_user_model(),
                               related_name="sources",
                               on_delete=models.CASCADE)
+
+    # Source
     name = models.CharField(max_length=256)
     authors = models.ManyToManyField(Author)
     publication = models.CharField(max_length=256, blank=True)
@@ -219,10 +162,11 @@ class Tag(BaseModel):
     owner = models.ForeignKey(get_user_model(),
                               related_name="tags",
                               on_delete=models.CASCADE)
+
+    # Tag
     name = models.CharField(max_length=64)
     color = models.CharField(max_length=64, blank=True)
     description = models.TextField(blank=True)
-    pinned = models.BooleanField(default=False)
 
     def __str__(self):
         return self.name
@@ -239,10 +183,11 @@ class Collection(BaseModel):
     owner = models.ForeignKey(get_user_model(),
                               related_name="collections",
                               on_delete=models.CASCADE)
+
+    # Collection
     name = models.CharField(max_length=64)
     color = models.CharField(max_length=64, blank=True)
     description = models.TextField(blank=True)
-    pinned = models.BooleanField(default=False)
 
     def __str__(self):
         return self.name
@@ -259,6 +204,8 @@ class Topic(BaseModel):
     owner = models.ForeignKey(get_user_model(),
                               related_name="topics",
                               on_delete=models.CASCADE)
+
+    # Topic
     name = models.CharField(max_length=64)
 
     def __str__(self):
@@ -277,6 +224,8 @@ class Passage(BaseModel):
                               related_name="passages",
                               on_delete=models.CASCADE)
     uuid = models.UUIDField(default=uuid.uuid4, unique=True)
+
+    # Passage
     body = models.TextField()
     notes = models.TextField(blank=True)
     source = models.ForeignKey(Source,
@@ -284,13 +233,22 @@ class Passage(BaseModel):
                                default=1)
     tags = models.ManyToManyField(Tag, blank=True)
     collections = models.ManyToManyField(Collection, blank=True)
-    topics = models.ManyToManyField(Topic, blank=True)
     origin = models.ForeignKey(Origin,
                                on_delete=models.CASCADE,
                                default=1)
+
+    # App
     is_starred = models.BooleanField(default=False)
-    is_refreshable = models.BooleanField(default=False)
     in_trash = models.BooleanField(default=False)
+
+    # Learned
+    topics = models.ManyToManyField(Topic, blank=True)
+    related = models.ManyToManyField("self", blank=True)
+    count_read = models.IntegerField(default=0)
+    count_query = models.IntegerField(default=0)
+
+    # API
+    is_refreshable = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.body[:64]}..."
@@ -299,15 +257,16 @@ class Passage(BaseModel):
         return f"<{self.__class__.__name__}:{self.uuid}>"
 
 
-User = get_user_model()
+AppUser = get_user_model()
 
 
-@receiver(post_save, sender=User)
-def init_new_user(instance: User, created: bool, raw: bool, **kwargs):
+@receiver(post_save, sender=AppUser)
+def init_new_user(instance: AppUser, created: bool, raw: bool, **kwargs):
     """
     Create default objects for new users.
 
     via https://docs.djangoproject.com/en/2.2/ref/signals/
+    via https://stackoverflow.com/a/19427227
 
     created: True if a new record was created.
     raw: True if the model is saved exactly as presented i.e. when loading a

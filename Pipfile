@@ -5,12 +5,14 @@ verify_ssl = true
 
 [dev-packages]
 flake8 = "*"
+pytest-django = "*"
 
 [packages]
 django = "*"
 gunicorn = "*"
 dj-database-url = "*"
 whitenoise = "*"
+pytest-cov = "*"
 
 [requires]
 python_version = "3.7"

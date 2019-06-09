@@ -11,12 +11,13 @@ APP_NAME = "hlts"
 def main():
 
     root_dir = pathlib.Path(__file__).parent.parent
-    migration_dirs = [
-        root_dir / "apps" / "passages" / "migrations",
-        root_dir / "apps" / "users" / "migrations"
-    ]
+    migration_dirs = list(root_dir.glob("apps/*/migrations"))
     db_file = root_dir / "tmp" / "db.sqlite3"
     fixtures_dir = root_dir / "fixtures"
+
+    if not migration_dirs:
+        print(f"Migrations folders not found!.")
+        sys.exit(-1)
 
     for dir_ in migration_dirs:
         if not dir_.exists():

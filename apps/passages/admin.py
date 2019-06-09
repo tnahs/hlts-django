@@ -78,21 +78,46 @@ class CollectionAdmin(ModelAdminSaveMixin, admin.ModelAdmin):
 class PassageAdmin(ModelAdminSaveMixin, admin.ModelAdmin):
 
     list_display = ["__str__", "source"]
-    readonly_fields = ["owner", "uuid", "topics", "created", "modified", "pinged", ]
     filter_horizontal = ["tags", "collections"]
     autocomplete_fields = ["source", "origin"]
+    readonly_fields = [
+        "owner", "uuid", "date_created", "date_modified", "topics", "related",
+        "count_read", "count_query",
+    ]
     fieldsets = [
         [
             "Passage", {
-                "fields": ["body", "notes", "source", "tags", "collections",
-                           "topics"]
-            }
+                "fields": [
+                    "body", "notes", "source", "tags", "collections", "origin",
+                ],
+            },
         ],
         [
-            "Metadata", {
-                "fields": ["owner", "uuid", "origin", "is_starred",
-                           "is_refreshable", "in_trash", "created", "modified",
-                           "pinged"],
-            }
+            "App", {
+                "fields": [
+                    "is_starred", "in_trash",
+                ],
+            },
+        ],
+        [
+            "Learned", {
+                "fields": [
+                    "topics", "related", "count_read", "count_query",
+                ],
+            },
+        ],
+        [
+            "Meta", {
+                "fields": [
+                    "uuid", "owner", "date_created", "date_modified",
+                ],
+            },
+        ],
+        [
+            "Api", {
+                "fields": [
+                    "is_refreshable",
+                ],
+            },
         ]
     ]

@@ -1,6 +1,6 @@
 [
     {
-        "model": "users.user",
+        "model": "users.appuser",
         "pk": 1,
         "fields": {
             "password": "pbkdf2_sha256$150000$01B9IhJeDsLU$M98Gr8wh2S70TCsz3YoW+4GGIFWOXeU45koVGrIy4Y8=",
@@ -30,18 +30,17 @@
         "pk": 1,
         "fields": {
             "owner": 1,
-            "name": "DevUnknown"
+            "name": "Unknown"
         }
     },
     {
         "model": "passages.author",
         "pk": 1,
         "fields": {
-            "created": "0001-01-01T00:00:00.00Z",
-            "modified": "0001-01-01T00:00:00.00Z",
-            "pinged": "0001-01-01T00:00:00.00Z",
+            "date_created": "0001-01-01T00:00:00.00Z",
+            "date_modified": "0001-01-01T00:00:00.00Z",
             "owner": 1,
-            "name": "DevUnknown",
+            "name": "Unknown",
             "first_name": "",
             "last_name": "",
             "aka": []
@@ -51,11 +50,10 @@
         "model": "passages.source",
         "pk": 1,
         "fields": {
-            "created": "0001-01-01T00:00:00.00Z",
-            "modified": "0001-01-01T00:00:00.00Z",
-            "pinged": "0001-01-01T00:00:00.00Z",
+            "date_created": "0001-01-01T00:00:00.00Z",
+            "date_modified": "0001-01-01T00:00:00.00Z",
             "owner": 1,
-            "name": "DevUnknown",
+            "name": "Unknown",
             "publication": "",
             "url": "",
             "date": null,

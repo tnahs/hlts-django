@@ -1,15 +1,25 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from .models import User
-from .forms import MainUserCreationForm, MainUserChangeForm
+from .models import AppUser, Notification, Task
+from .forms import AppUserCreationForm, AppUserChangeForm
 
 
-@admin.register(User)
-class MainUserAdmin(UserAdmin):
+@admin.register(AppUser)
+class AppUserAdmin(UserAdmin):
 
-    model = User
-    add_form = MainUserCreationForm
-    form = MainUserChangeForm
+    model = AppUser
+    add_form = AppUserCreationForm
+    form = AppUserChangeForm
 
     list_display = ["username", "email"]
+
+
+@admin.register(Notification)
+class NotificationAdmin(admin.ModelAdmin):
+    pass
+
+
+@admin.register(Task)
+class TaskAdmin(admin.ModelAdmin):
+    pass
