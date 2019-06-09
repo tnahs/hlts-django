@@ -1,8 +1,12 @@
 from django import forms
 from django.contrib import admin
+from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
 
 from .models import Origin, Medium, Author, Source, Tag, Collection, Passage
+
+
+admin.site.unregister(Group)
 
 
 class ModelAdminSaveMixin:
@@ -77,7 +81,7 @@ class CollectionAdmin(ModelAdminSaveMixin, admin.ModelAdmin):
 @admin.register(Passage)
 class PassageAdmin(ModelAdminSaveMixin, admin.ModelAdmin):
 
-    list_display = ["__str__", "source"]
+    list_display = ["__str__", "_source", "_tags", "_collections", "is_starred"]
     filter_horizontal = ["tags", "collections"]
     autocomplete_fields = ["source", "origin"]
     readonly_fields = [
@@ -86,38 +90,29 @@ class PassageAdmin(ModelAdminSaveMixin, admin.ModelAdmin):
     ]
     fieldsets = [
         [
-            "Passage", {
+            None, {
                 "fields": [
-                    "body", "notes", "source", "tags", "collections", "origin",
+                    "uuid", "body", "notes", "source", "tags", "collections",
+                    "origin", "is_starred", "in_trash", "is_refreshable",
                 ],
             },
         ],
         [
-            "App", {
+            "Read-only", {
                 "fields": [
-                    "is_starred", "in_trash",
+                    "owner", "date_created", "date_modified", "topics",
+                    "related", "count_read", "count_query",
                 ],
             },
         ],
-        [
-            "Learned", {
-                "fields": [
-                    "topics", "related", "count_read", "count_query",
-                ],
-            },
-        ],
-        [
-            "Meta", {
-                "fields": [
-                    "uuid", "owner", "date_created", "date_modified",
-                ],
-            },
-        ],
-        [
-            "Api", {
-                "fields": [
-                    "is_refreshable",
-                ],
-            },
-        ]
     ]
+
+    def _source(self, obj):
+        authors = ", ".join([author.name for author in obj.source.authors.all()])
+        return f"{obj.source.name} - {authors}"
+
+    def _tags(self, obj):
+        return ", ".join([child.name for child in obj.tags.all()])
+
+    def _collections(self, obj):
+        return ", ".join([child.name for child in obj.collections.all()])

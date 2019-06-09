@@ -6,3 +6,8 @@ omit =
   *config/*,
   *scripts/*,
   manage.py
+
+[report]
+exclude_lines =
+  def __repr__
+  def __str__

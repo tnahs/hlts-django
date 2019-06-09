@@ -111,14 +111,10 @@ class Source(BaseModel):
                                on_delete=models.CASCADE)
 
     def __str__(self):
-        return f"{self.name} - {self.authors_as_str}"
+        return self.name
 
     def __repr__(self):
-        return f"<{self.__class__.__name__}:{self.name} - {self.authors_as_str}>"
-
-    @property
-    def authors_as_str(self):
-        return ", ".join([author.name for author in list(self.authors.all())])
+        return f"<{self.__class__.__name__}:{self.name}>"
 
     @staticmethod
     def validate_authors(source_pk: Union[int, None], source_name: str,
@@ -223,9 +219,9 @@ class Passage(BaseModel):
     owner = models.ForeignKey(get_user_model(),
                               related_name="passages",
                               on_delete=models.CASCADE)
-    uuid = models.UUIDField(default=uuid.uuid4, unique=True)
 
     # Passage
+    uuid = models.UUIDField(default=uuid.uuid4, unique=True)
     body = models.TextField()
     notes = models.TextField(blank=True)
     source = models.ForeignKey(Source,
@@ -236,19 +232,15 @@ class Passage(BaseModel):
     origin = models.ForeignKey(Origin,
                                on_delete=models.CASCADE,
                                default=1)
-
-    # App
     is_starred = models.BooleanField(default=False)
     in_trash = models.BooleanField(default=False)
+    is_refreshable = models.BooleanField(default=False)
 
-    # Learned
+    # Read-only
     topics = models.ManyToManyField(Topic, blank=True)
     related = models.ManyToManyField("self", blank=True)
     count_read = models.IntegerField(default=0)
     count_query = models.IntegerField(default=0)
-
-    # API
-    is_refreshable = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.body[:64]}..."
