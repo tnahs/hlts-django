@@ -12,6 +12,9 @@ STATICFILES_DIRS = [
     SITE_ROOT / "static",
 ]
 
+MEDIA_ROOT = SITE_ROOT / "media"
+MEDIA_URL = "/media/"
+
 FIXTURE_DIRS = [
     SITE_ROOT / "fixtures",
 ]
@@ -34,7 +37,7 @@ INSTALLED_APPS = [
     # local apps
     "apps.api.apps.ApiConfig",
     "apps.users.apps.UsersConfig",
-    "apps.passages.apps.PassagesConfig",
+    "apps.nodes.apps.NodesConfig",
 ]
 
 MIDDLEWARE = [

@@ -1,5 +1,5 @@
 ```
-<passage>
+<text>
     owner:
         object: <user>
         relation: ForeignKey
@@ -29,7 +29,7 @@
         objects: <topic>
         relation: ManyToMany
     related:
-        objects: <passage>
+        objects: <text>
         relation: ManyToMany
     count_read: int
     count_query: int
@@ -42,27 +42,24 @@
         relation: ForeignKey
 
     name: string
-    authors:
-        objects: <author>
+    individuals:
+        objects: <individual>
         relation: ManyToMany
     publication:
     url: url
     date: datetime
     notes: string
-    medium:
-        object: <medium>
-        relation: ForeignKey
     date_created: datetime
     date_modified: datetime
 
-<author>
+<individual>
     owner:
         object: <user>
         relation: ForeignKey
 
     name: string
     aka:
-        objects: <author>
+        objects: <individual>
         relation: ManyToMany
     date_created: datetime
     date_modified: datetime

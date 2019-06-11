@@ -8,7 +8,6 @@ class AppUserCreationForm(UserCreationForm):
     class Meta(UserCreationForm):
         model = AppUser
         fields = "__all__"
-        # fields = UserCreationForm.Meta.fields + ("custom_fields",)
 
 
 class AppUserChangeForm(UserChangeForm):
