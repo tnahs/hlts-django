@@ -3,7 +3,7 @@
 import os
 import sys
 import pathlib
-
+import shutil
 
 APP_NAME = "hlts"
 
@@ -12,8 +12,11 @@ def main():
 
     root_dir = pathlib.Path(__file__).parent.parent
     migration_dirs = list(root_dir.glob("apps/*/migrations"))
-    db_file = root_dir / "tmp" / "db.sqlite3"
     fixtures_dir = root_dir / "fixtures"
+    tmp_dir = root_dir / "tmp"
+    db_file = tmp_dir / "db.sqlite3"
+    media_dir = root_dir / "media"
+    dev_media_dir = fixtures_dir / "dev_media"
 
     if not migration_dirs:
         print(f"Migrations folders not found!.")
@@ -42,9 +45,26 @@ def main():
                 raise
 
     try:
+        tmp_dir.mkdir()
+    except FileExistsError:
+        pass
+    except Exception:
+        raise
+
+    try:
         db_file.unlink()
     except FileNotFoundError:
         pass
+    except Exception:
+        raise
+
+    try:
+        shutil.rmtree(media_dir)
+    except Exception:
+        raise
+
+    try:
+        shutil.copytree(dev_media_dir, media_dir)
     except Exception:
         raise
 

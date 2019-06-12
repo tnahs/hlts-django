@@ -100,7 +100,8 @@ class Source(NodeData):
 
     # Source
     name = models.CharField(max_length=256)
-    individuals = models.ManyToManyField(Individual)
+    individuals = models.ManyToManyField(Individual,
+                                         blank=True)
     publication = models.CharField(max_length=256, blank=True)
     url = models.URLField(max_length=256, blank=True)
     date = models.DateTimeField(null=True, blank=True)
@@ -231,6 +232,9 @@ class Topic(NodeData):
 
 class Node(models.Model):
 
+    class Meta:
+        abstract = True
+
     source = models.ForeignKey(Source,
                                on_delete=models.CASCADE,
                                null=True,
@@ -329,7 +333,28 @@ class Image(Node):
         return self.file.url
 
     def __repr__(self):
-        return f"<{self.__class__.__name__}:{self.file}>"
+        return f"<{self.__class__.__name__}:{self.file.url}>"
+
+
+class Audio(Node):
+
+    class Meta:
+        verbose_name = "Node Audio"
+
+    owner = models.ForeignKey(User,
+                              related_name="audios",
+                              on_delete=models.CASCADE)
+
+    # Audio
+    file = models.FileField(upload_to=Node.video_directory)
+    name = models.CharField(max_length=128, blank=True)
+    description = models.TextField(blank=True)
+
+    def __str__(self):
+        return self.file.url
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__}:{self.file.url}>"
 
 
 class Video(Node):
@@ -350,7 +375,7 @@ class Video(Node):
         return self.file.url
 
     def __repr__(self):
-        return f"<{self.__class__.__name__}:{self.file}>"
+        return f"<{self.__class__.__name__}:{self.file.url}>"
 
 
 class Document(Node):
@@ -371,7 +396,7 @@ class Document(Node):
         return self.file.url
 
     def __repr__(self):
-        return f"<{self.__class__.__name__}:{self.file}>"
+        return f"<{self.__class__.__name__}:{self.file.url}>"
 
 
 @receiver(post_save, sender=User)
@@ -394,9 +419,9 @@ def init_new_user(instance: User, created: bool, raw: bool, **kwargs):
     origin = Origin.objects.create(name="app", owner=instance)
     origin.save()
 
-    individual = Individual.objects.create(name="Unknown", owner=instance)
-    individual.save()
+    # individual = Individual.objects.create(name="Unknown", owner=instance)
+    # individual.save()
 
-    source = Source.objects.create(name="Unknown", owner=instance)
-    source.individuals.add(individual)
-    source.save()
+    # source = Source.objects.create(name="Unknown", owner=instance)
+    # source.individuals.add(individual)
+    # source.save()

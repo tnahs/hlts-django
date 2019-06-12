@@ -4,7 +4,7 @@ from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
 
 from .models import (Origin, Individual, Source, Tag, Collection, Text, Link,
-    Image, Video, Document)
+    Image, Audio, Video, Document)
 
 
 admin.site.unregister(Group)
@@ -104,7 +104,7 @@ class NodeAdmin(ModelAdminSaveMixin, admin.ModelAdmin):
         if not obj.source:
             return ""
 
-        if not obj.source.individuals:
+        if not obj.source.individuals.count():
             return obj.source.name
 
         individuals = ", ".join([a.name for a in obj.source.individuals.all()])
@@ -153,6 +153,20 @@ class ImageAdmin(NodeAdmin):
     fieldsets = [
         [
             "Image", {
+                "fields": [
+                    "file", "name", "description"
+                ],
+            },
+        ]
+    ] + NodeAdmin.fieldsets
+
+
+@admin.register(Audio)
+class AudioAdmin(NodeAdmin):
+
+    fieldsets = [
+        [
+            "Audio", {
                 "fields": [
                     "file", "name", "description"
                 ],

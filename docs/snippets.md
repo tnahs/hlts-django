@@ -8,6 +8,7 @@ heroku run <command> --settings=config.settings.production
 
 python manage.py dumpdata \
     --indent 4 \
+    --exclude admin \
     --exclude auth \
     --exclude users \
     --exclude sessions \
