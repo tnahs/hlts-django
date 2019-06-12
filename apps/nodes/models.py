@@ -9,6 +9,9 @@ from django.core.exceptions import ValidationError
 from django.dispatch import receiver
 
 
+User = get_user_model()
+
+
 """ Node Data """
 
 
@@ -28,7 +31,7 @@ class Origin(NodeData):
         verbose_name = "NodeData Origin"
         unique_together = ["owner", "name"]
 
-    owner = models.ForeignKey(get_user_model(),
+    owner = models.ForeignKey(User,
                               related_name="origins",
                               on_delete=models.CASCADE)
 
@@ -55,7 +58,7 @@ class Individual(NodeData):
         verbose_name = "NodeData Individual"
         unique_together = ["owner", "name"]
 
-    owner = models.ForeignKey(get_user_model(),
+    owner = models.ForeignKey(User,
                               related_name="individuals",
                               on_delete=models.CASCADE)
 
@@ -91,7 +94,7 @@ class Source(NodeData):
         verbose_name = "NodeData Source"
         unique_together = ["owner", "name"]
 
-    owner = models.ForeignKey(get_user_model(),
+    owner = models.ForeignKey(User,
                               related_name="sources",
                               on_delete=models.CASCADE)
 
@@ -153,7 +156,7 @@ class Tag(NodeData):
         verbose_name = "NodeData Tag"
         unique_together = ["owner", "name"]
 
-    owner = models.ForeignKey(get_user_model(),
+    owner = models.ForeignKey(User,
                               related_name="tags",
                               on_delete=models.CASCADE)
 
@@ -179,7 +182,7 @@ class Collection(NodeData):
         verbose_name = "NodeData Collection"
         unique_together = ["owner", "name"]
 
-    owner = models.ForeignKey(get_user_model(),
+    owner = models.ForeignKey(User,
                               related_name="collections",
                               on_delete=models.CASCADE)
 
@@ -205,7 +208,7 @@ class Topic(NodeData):
         verbose_name = "NodeData Topic"
         unique_together = ["owner", "name"]
 
-    owner = models.ForeignKey(get_user_model(),
+    owner = models.ForeignKey(User,
                               related_name="topics",
                               on_delete=models.CASCADE)
 
@@ -260,68 +263,10 @@ class Node(models.Model):
         # MEDIA_ROOT/user_<pk>/videos/<filename>
         return f"user_{instance.owner.pk}/videos/{filename}"
 
-
-class Link(Node):
-
-    class Meta:
-        verbose_name = "Node Link"
-
-    owner = models.ForeignKey(get_user_model(),
-                            related_name="links",
-                            on_delete=models.CASCADE)
-
-    # Link
-    url = models.URLField(max_length=512)
-    name = models.CharField(max_length=128, blank=True)
-    caption = models.TextField(blank=True)
-
-    def __str__(self):
-        return str(self.url)
-
-    def __repr__(self):
-        return f"<{self.__class__.__name__}:{self.url}>"
-
-
-class Image(Node):
-
-    class Meta:
-        verbose_name = "Node Image"
-
-    owner = models.ForeignKey(get_user_model(),
-                            related_name="images",
-                            on_delete=models.CASCADE)
-
-    # Image
-    file = models.ImageField(upload_to=Node.image_directory)
-    name = models.CharField(max_length=128, blank=True)
-    caption = models.TextField(blank=True)
-
-    def __str__(self):
-        return self.file.url
-
-    def __repr__(self):
-        return f"<{self.__class__.__name__}:{self.file}>"
-
-
-class Video(Node):
-
-    class Meta:
-        verbose_name = "Node Video"
-
-    owner = models.ForeignKey(get_user_model(),
-                            related_name="videos",
-                            on_delete=models.CASCADE)
-
-    # Video
-    file = models.FileField(upload_to=Node.video_directory)
-    name = models.CharField(max_length=128, blank=True)
-    caption = models.TextField(blank=True)
-
-    def __str__(self):
-        return self.file.url
-
-    def __repr__(self):
-        return f"<{self.__class__.__name__}:{self.file}>"
+    @staticmethod
+    def document_directory(instance, filename):
+        # MEDIA_ROOT/user_<pk>/documents/<filename>
+        return f"user_{instance.owner.pk}/documents/{filename}"
 
 
 class Text(Node):
@@ -330,7 +275,7 @@ class Text(Node):
         verbose_name = "Node Text"
         unique_together = ["owner", "uuid"]
 
-    owner = models.ForeignKey(get_user_model(),
+    owner = models.ForeignKey(User,
                               related_name="texts",
                               on_delete=models.CASCADE)
 
@@ -345,11 +290,92 @@ class Text(Node):
         return f"<{self.__class__.__name__}:{self.uuid}>"
 
 
-AppUser = get_user_model()
+class Link(Node):
+
+    class Meta:
+        verbose_name = "Node Link"
+
+    owner = models.ForeignKey(User,
+                              related_name="links",
+                              on_delete=models.CASCADE)
+
+    # Link
+    url = models.URLField(max_length=512)
+    name = models.CharField(max_length=128, blank=True)
+    description = models.TextField(blank=True)
+
+    def __str__(self):
+        return str(self.url)
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__}:{self.url}>"
 
 
-@receiver(post_save, sender=AppUser)
-def init_new_user(instance: AppUser, created: bool, raw: bool, **kwargs):
+class Image(Node):
+
+    class Meta:
+        verbose_name = "Node Image"
+
+    owner = models.ForeignKey(User,
+                              related_name="images",
+                              on_delete=models.CASCADE)
+
+    # Image
+    file = models.ImageField(upload_to=Node.image_directory)
+    name = models.CharField(max_length=128, blank=True)
+    description = models.TextField(blank=True)
+
+    def __str__(self):
+        return self.file.url
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__}:{self.file}>"
+
+
+class Video(Node):
+
+    class Meta:
+        verbose_name = "Node Video"
+
+    owner = models.ForeignKey(User,
+                              related_name="videos",
+                              on_delete=models.CASCADE)
+
+    # Video
+    file = models.FileField(upload_to=Node.video_directory)
+    name = models.CharField(max_length=128, blank=True)
+    description = models.TextField(blank=True)
+
+    def __str__(self):
+        return self.file.url
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__}:{self.file}>"
+
+
+class Document(Node):
+
+    class Meta:
+        verbose_name = "Node Document"
+
+    owner = models.ForeignKey(User,
+                              related_name="documents",
+                              on_delete=models.CASCADE)
+
+    # Document
+    file = models.FileField(upload_to=Node.document_directory)
+    name = models.CharField(max_length=128, blank=True)
+    description = models.TextField(blank=True)
+
+    def __str__(self):
+        return self.file.url
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__}:{self.file}>"
+
+
+@receiver(post_save, sender=User)
+def init_new_user(instance: User, created: bool, raw: bool, **kwargs):
     """
     Create default objects for new users.
 

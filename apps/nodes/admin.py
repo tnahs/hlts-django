@@ -3,7 +3,8 @@ from django.contrib import admin
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
 
-from .models import (Origin, Individual, Source, Tag, Collection, Link, Image, Video, Text)
+from .models import (Origin, Individual, Source, Tag, Collection, Text, Link,
+    Image, Video, Document)
 
 
 admin.site.unregister(Group)
@@ -117,6 +118,21 @@ class NodeAdmin(ModelAdminSaveMixin, admin.ModelAdmin):
         return ", ".join([c.name for c in obj.collections.all()])
 
 
+@admin.register(Text)
+class TextAdmin(NodeAdmin):
+
+    readonly_fields = ["uuid"] + NodeAdmin.readonly_fields
+    fieldsets = [
+        [
+            "Text", {
+                "fields": [
+                    "uuid", "body",
+                ],
+            },
+        ]
+    ] + NodeAdmin.fieldsets
+
+
 @admin.register(Link)
 class LinkAdmin(NodeAdmin):
 
@@ -124,7 +140,7 @@ class LinkAdmin(NodeAdmin):
         [
             "Link", {
                 "fields": [
-                    "url", "name", "caption"
+                    "url", "name", "description"
                 ],
             },
         ]
@@ -138,7 +154,7 @@ class ImageAdmin(NodeAdmin):
         [
             "Image", {
                 "fields": [
-                    "file", "name", "caption"
+                    "file", "name", "description"
                 ],
             },
         ]
@@ -152,22 +168,21 @@ class VideoAdmin(NodeAdmin):
         [
             "Video", {
                 "fields": [
-                    "file", "name", "caption"
+                    "file", "name", "description"
                 ],
             },
         ]
     ] + NodeAdmin.fieldsets
 
 
-@admin.register(Text)
-class TextAdmin(NodeAdmin):
+@admin.register(Document)
+class DocumentAdmin(NodeAdmin):
 
-    readonly_fields = ["uuid"] + NodeAdmin.readonly_fields
     fieldsets = [
         [
-            "Text", {
+            "Document", {
                 "fields": [
-                    "uuid", "body",
+                    "file", "name", "description"
                 ],
             },
         ]
