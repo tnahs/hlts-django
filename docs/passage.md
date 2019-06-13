@@ -45,7 +45,6 @@
     individuals:
         objects: <individual>
         relation: ManyToMany
-    publication:
     url: url
     date: datetime
     notes: string

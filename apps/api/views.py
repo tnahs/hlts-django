@@ -1,41 +1,39 @@
 from rest_framework import viewsets
 
-from ..nodes.models import Text, Link, Image, Audio, Video, Document
-from ..nodes.serializers import (TextSerializer, LinkSerializer,
-    ImageSerializer, AudioSerializer, VideoSerializer, DocumentSerializer)
+from ..users.models import AppUser
+from ..users.serializers import UserNodesSerializer
+from ..nodes.models import Text, Image
+from ..nodes.serializers import TextSerializer, ImageSerializer
+
+
+class UserNodesViewSet(viewsets.ReadOnlyModelViewSet):
+
+    serializer_class = UserNodesSerializer
+
+    def get_queryset(self):
+        return AppUser.objects.filter(pk=self.request.user.pk)
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
 
 
 class TextViewSet(viewsets.ModelViewSet):
 
-    queryset = Text.objects.all()
     serializer_class = TextSerializer
 
+    def get_queryset(self):
+        return Text.objects.filter(owner=self.request.user.pk)
 
-class LinkViewSet(viewsets.ModelViewSet):
-
-    queryset = Link.objects.all()
-    serializer_class = LinkSerializer
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
 
 
 class ImageViewSet(viewsets.ModelViewSet):
 
-    queryset = Image.objects.all()
     serializer_class = ImageSerializer
 
+    def get_queryset(self):
+        return Image.objects.filter(owner=self.request.user.pk)
 
-class AudioViewSet(viewsets.ModelViewSet):
-
-    queryset = Audio.objects.all()
-    serializer_class = AudioSerializer
-
-
-class VideoViewSet(viewsets.ModelViewSet):
-
-    queryset = Video.objects.all()
-    serializer_class = VideoSerializer
-
-
-class DocumentViewSet(viewsets.ModelViewSet):
-
-    queryset = Document.objects.all()
-    serializer_class = DocumentSerializer
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)

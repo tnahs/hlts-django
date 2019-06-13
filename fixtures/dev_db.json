@@ -3,16 +3,34 @@
         "model": "users.appuser",
         "pk": 1,
         "fields": {
-            "password": "pbkdf2_sha256$150000$01B9IhJeDsLU$M98Gr8wh2S70TCsz3YoW+4GGIFWOXeU45koVGrIy4Y8=",
-            "last_login": null,
+            "password": "pbkdf2_sha256$150000$47wzpMcauhsu$vCY/2c9f8K75C4p4kV8ihjNdgBC4hJR0y8+0Y3ajAuM=",
+            "last_login": "2019-06-13T13:47:38.185Z",
             "is_superuser": true,
-            "username": "shant",
-            "first_name": "Shant",
-            "last_name": "Ergenian",
-            "email": "shant.ergenian@gmail.com",
+            "username": "admin",
+            "first_name": "",
+            "last_name": "",
+            "email": "",
             "is_staff": true,
             "is_active": true,
-            "date_joined": "0001-01-01T00:00:00.00Z",
+            "date_joined": "0001-01-01T00:00:00Z",
+            "groups": [],
+            "user_permissions": []
+        }
+    },
+    {
+        "model": "users.appuser",
+        "pk": 2,
+        "fields": {
+            "password": "pbkdf2_sha256$150000$Akz7zjClqv3l$MXzUYZysIgy+FaJOVJZU1tD2WoOFAMsXuuYrCeNm50o=",
+            "last_login": null,
+            "is_superuser": false,
+            "username": "guest",
+            "first_name": "",
+            "last_name": "",
+            "email": "",
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "0001-01-01T00:00:00Z",
             "groups": [],
             "user_permissions": []
         }
@@ -33,13 +51,27 @@
         "fields": {
             "owner": 1,
             "name": "Aliquam Elementum",
-            "publication": "",
             "url": "",
             "date": null,
             "notes": "",
             "date_created": "2019-06-12T14:56:14.335Z",
             "date_modified": "2019-06-12T14:56:14.335Z",
-            "individuals": []
+            "individuals": [
+                1
+            ]
+        }
+    },
+    {
+        "model": "nodes.individual",
+        "pk": 1,
+        "fields": {
+            "owner": 1,
+            "name": "Barnaby Melice",
+            "first_name": "",
+            "last_name": "",
+            "date_created": "2019-06-12T14:56:14.335Z",
+            "date_modified": "2019-06-12T14:56:14.335Z",
+            "aka": []
         }
     },
     {
@@ -48,8 +80,6 @@
         "fields": {
             "owner": 1,
             "name": "imperdiet",
-            "color": "",
-            "description": "",
             "date_created": "2019-06-12T14:50:38.399Z",
             "date_modified": "2019-06-12T14:50:38.399Z"
         }
@@ -60,8 +90,6 @@
         "fields": {
             "owner": 1,
             "name": "fermentum",
-            "color": "",
-            "description": "",
             "date_created": "2019-06-12T14:50:58.970Z",
             "date_modified": "2019-06-12T14:50:58.970Z"
         }
@@ -72,8 +100,6 @@
         "fields": {
             "owner": 1,
             "name": "ullamcorper",
-            "color": "",
-            "description": "",
             "date_created": "2019-06-12T14:51:03.944Z",
             "date_modified": "2019-06-12T14:51:03.944Z"
         }
@@ -84,8 +110,6 @@
         "fields": {
             "owner": 1,
             "name": "ultricies",
-            "color": "",
-            "description": "",
             "date_created": "2019-06-12T14:51:11.060Z",
             "date_modified": "2019-06-12T14:51:11.060Z"
         }
@@ -96,8 +120,6 @@
         "fields": {
             "owner": 1,
             "name": "volutpat",
-            "color": "",
-            "description": "",
             "date_created": "2019-06-12T15:07:39.670Z",
             "date_modified": "2019-06-12T15:07:39.670Z"
         }
@@ -182,31 +204,6 @@
         }
     },
     {
-        "model": "nodes.link",
-        "pk": 1,
-        "fields": {
-            "source": null,
-            "notes": "",
-            "origin": 1,
-            "in_trash": false,
-            "is_starred": false,
-            "count_seen": 0,
-            "count_query": 0,
-            "date_created": "2019-06-12T15:09:10.263Z",
-            "date_modified": "2019-06-12T15:09:10.264Z",
-            "owner": 1,
-            "url": "http://github.com",
-            "name": "",
-            "description": "",
-            "tags": [
-                3
-            ],
-            "collections": [],
-            "topics": [],
-            "related": []
-        }
-    },
-    {
         "model": "nodes.image",
         "pk": 1,
         "fields": {
@@ -283,33 +280,6 @@
                 2
             ],
             "collections": [],
-            "topics": [],
-            "related": []
-        }
-    },
-    {
-        "model": "nodes.document",
-        "pk": 1,
-        "fields": {
-            "source": null,
-            "notes": "",
-            "origin": 1,
-            "in_trash": false,
-            "is_starred": false,
-            "count_seen": 0,
-            "count_query": 0,
-            "date_created": "2019-06-12T15:08:50.745Z",
-            "date_modified": "2019-06-12T15:08:50.745Z",
-            "owner": 1,
-            "file": "user_1/documents/DINRoundProLight-InfoGuide.pdf",
-            "name": "",
-            "description": "",
-            "tags": [
-                3
-            ],
-            "collections": [
-                2
-            ],
             "topics": [],
             "related": []
         }

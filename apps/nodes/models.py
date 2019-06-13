@@ -102,7 +102,6 @@ class Source(NodeData):
     name = models.CharField(max_length=256)
     individuals = models.ManyToManyField(Individual,
                                          blank=True)
-    publication = models.CharField(max_length=256, blank=True)
     url = models.URLField(max_length=256, blank=True)
     date = models.DateTimeField(null=True, blank=True)
     notes = models.TextField(blank=True)
@@ -163,8 +162,6 @@ class Tag(NodeData):
 
     # Tag
     name = models.CharField(max_length=64)
-    color = models.CharField(max_length=64, blank=True)
-    description = models.TextField(blank=True)
 
     # Read-only
     date_created = models.DateTimeField(auto_now_add=True)
@@ -189,8 +186,6 @@ class Collection(NodeData):
 
     # Collection
     name = models.CharField(max_length=64)
-    color = models.CharField(max_length=64, blank=True)
-    description = models.TextField(blank=True)
 
     # Read-only
     date_created = models.DateTimeField(auto_now_add=True)
@@ -245,13 +240,16 @@ class Node(models.Model):
 
     origin = models.ForeignKey(Origin,
                                on_delete=models.CASCADE,
-                               default=1)
+                               null=True,
+                               blank=True)
     in_trash = models.BooleanField(default=False)
     is_starred = models.BooleanField(default=False)
 
+    # FIXME: Can't relate nodes to nodes: images to text
+    related = models.ManyToManyField("self", blank=True)
+
     # Read-only
     topics = models.ManyToManyField(Topic, blank=True)
-    related = models.ManyToManyField("self", blank=True)
     count_seen = models.IntegerField(default=0)
     count_query = models.IntegerField(default=0)
     date_created = models.DateTimeField(auto_now_add=True)
@@ -294,27 +292,6 @@ class Text(Node):
         return f"<{self.__class__.__name__}:{self.uuid}>"
 
 
-class Link(Node):
-
-    class Meta:
-        verbose_name = "Node Link"
-
-    owner = models.ForeignKey(User,
-                              related_name="links",
-                              on_delete=models.CASCADE)
-
-    # Link
-    url = models.URLField(max_length=512)
-    name = models.CharField(max_length=128, blank=True)
-    description = models.TextField(blank=True)
-
-    def __str__(self):
-        return str(self.url)
-
-    def __repr__(self):
-        return f"<{self.__class__.__name__}:{self.url}>"
-
-
 class Image(Node):
 
     class Meta:
@@ -326,69 +303,6 @@ class Image(Node):
 
     # Image
     file = models.ImageField(upload_to=Node.image_directory)
-    name = models.CharField(max_length=128, blank=True)
-    description = models.TextField(blank=True)
-
-    def __str__(self):
-        return self.file.url
-
-    def __repr__(self):
-        return f"<{self.__class__.__name__}:{self.file.url}>"
-
-
-class Audio(Node):
-
-    class Meta:
-        verbose_name = "Node Audio"
-
-    owner = models.ForeignKey(User,
-                              related_name="audios",
-                              on_delete=models.CASCADE)
-
-    # Audio
-    file = models.FileField(upload_to=Node.video_directory)
-    name = models.CharField(max_length=128, blank=True)
-    description = models.TextField(blank=True)
-
-    def __str__(self):
-        return self.file.url
-
-    def __repr__(self):
-        return f"<{self.__class__.__name__}:{self.file.url}>"
-
-
-class Video(Node):
-
-    class Meta:
-        verbose_name = "Node Video"
-
-    owner = models.ForeignKey(User,
-                              related_name="videos",
-                              on_delete=models.CASCADE)
-
-    # Video
-    file = models.FileField(upload_to=Node.video_directory)
-    name = models.CharField(max_length=128, blank=True)
-    description = models.TextField(blank=True)
-
-    def __str__(self):
-        return self.file.url
-
-    def __repr__(self):
-        return f"<{self.__class__.__name__}:{self.file.url}>"
-
-
-class Document(Node):
-
-    class Meta:
-        verbose_name = "Node Document"
-
-    owner = models.ForeignKey(User,
-                              related_name="documents",
-                              on_delete=models.CASCADE)
-
-    # Document
-    file = models.FileField(upload_to=Node.document_directory)
     name = models.CharField(max_length=128, blank=True)
     description = models.TextField(blank=True)
 
@@ -418,10 +332,3 @@ def init_new_user(instance: User, created: bool, raw: bool, **kwargs):
 
     origin = Origin.objects.create(name="app", owner=instance)
     origin.save()
-
-    # individual = Individual.objects.create(name="Unknown", owner=instance)
-    # individual.save()
-
-    # source = Source.objects.create(name="Unknown", owner=instance)
-    # source.individuals.add(individual)
-    # source.save()

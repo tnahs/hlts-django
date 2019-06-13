@@ -3,8 +3,7 @@ from django.contrib import admin
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
 
-from .models import (Origin, Individual, Source, Tag, Collection, Text, Link,
-    Image, Audio, Video, Document)
+from .models import (Origin, Individual, Source, Tag, Collection, Text, Image)
 
 
 admin.site.unregister(Group)
@@ -77,15 +76,15 @@ class NodeAdmin(ModelAdminSaveMixin, admin.ModelAdmin):
     filter_horizontal = ["tags", "collections"]
     autocomplete_fields = ["origin", "source"]
     readonly_fields = [
-        "owner", "date_created", "date_modified", "topics", "related",
-        "count_seen", "count_query",
+        "owner", "date_created", "date_modified", "topics", "count_seen",
+        "count_query",
     ]
     fieldsets = [
         [
             "Node", {
                 "fields": [
                     "source", "notes", "tags", "collections", "origin",
-                    "is_starred", "in_trash",
+                    "is_starred", "in_trash", "related",
                 ],
             },
         ],
@@ -93,7 +92,7 @@ class NodeAdmin(ModelAdminSaveMixin, admin.ModelAdmin):
             "Read-only", {
                 "fields": [
                     "owner", "date_created", "date_modified", "topics",
-                    "related", "count_seen", "count_query",
+                    "count_seen", "count_query",
                 ],
             },
         ],
@@ -133,68 +132,12 @@ class TextAdmin(NodeAdmin):
     ] + NodeAdmin.fieldsets
 
 
-@admin.register(Link)
-class LinkAdmin(NodeAdmin):
-
-    fieldsets = [
-        [
-            "Link", {
-                "fields": [
-                    "url", "name", "description"
-                ],
-            },
-        ]
-    ] + NodeAdmin.fieldsets
-
-
 @admin.register(Image)
 class ImageAdmin(NodeAdmin):
 
     fieldsets = [
         [
             "Image", {
-                "fields": [
-                    "file", "name", "description"
-                ],
-            },
-        ]
-    ] + NodeAdmin.fieldsets
-
-
-@admin.register(Audio)
-class AudioAdmin(NodeAdmin):
-
-    fieldsets = [
-        [
-            "Audio", {
-                "fields": [
-                    "file", "name", "description"
-                ],
-            },
-        ]
-    ] + NodeAdmin.fieldsets
-
-
-@admin.register(Video)
-class VideoAdmin(NodeAdmin):
-
-    fieldsets = [
-        [
-            "Video", {
-                "fields": [
-                    "file", "name", "description"
-                ],
-            },
-        ]
-    ] + NodeAdmin.fieldsets
-
-
-@admin.register(Document)
-class DocumentAdmin(NodeAdmin):
-
-    fieldsets = [
-        [
-            "Document", {
                 "fields": [
                     "file", "name", "description"
                 ],
