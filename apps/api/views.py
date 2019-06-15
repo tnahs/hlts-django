@@ -1,39 +1,64 @@
-from rest_framework import viewsets
+from django.contrib.auth import get_user_model
 
-from ..users.models import AppUser
-from ..users.serializers import UserNodesSerializer
-from ..nodes.models import Text, Image
-from ..nodes.serializers import TextSerializer, ImageSerializer
+from rest_framework import viewsets, mixins
+
+from ..nodes.models import Text, Image, Tag, Collection
+from ..nodes.serializers import (NodesSerializer, TextSerializer,
+    ImageSerializer, TagSerializer, CollectionSerializer)
 
 
-class UserNodesViewSet(viewsets.ReadOnlyModelViewSet):
-
-    serializer_class = UserNodesSerializer
+class BaseNodeAttributesViewSet(viewsets.GenericViewSet,
+                                mixins.ListModelMixin,
+                                mixins.CreateModelMixin):
 
     def get_queryset(self):
-        return AppUser.objects.filter(pk=self.request.user.pk)
+        return self.queryset.filter(user=self.request.user).order_by("name")
 
     def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
+        serializer.save(user=self.request.user)
 
 
-class TextViewSet(viewsets.ModelViewSet):
+class TagViewSet(BaseNodeAttributesViewSet):
+    queryset = Tag.objects.all()
+    serializer_class = TagSerializer
 
+
+class CollectionViewSet(BaseNodeAttributesViewSet):
+    queryset = Collection.objects.all()
+    serializer_class = CollectionSerializer
+
+
+#
+
+
+class BaseNodeViewSet(viewsets.ModelViewSet):
+
+    def get_queryset(self):
+        return self.queryset.filter(user=self.request.user).order_by("date_created")
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class TextViewSet(BaseNodeViewSet):
+
+    queryset = Text.objects.all()
     serializer_class = TextSerializer
 
-    def get_queryset(self):
-        return Text.objects.filter(owner=self.request.user.pk)
 
-    def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
+class ImageViewSet(BaseNodeViewSet):
 
-
-class ImageViewSet(viewsets.ModelViewSet):
-
+    queryset = Image.objects.all()
     serializer_class = ImageSerializer
 
-    def get_queryset(self):
-        return Image.objects.filter(owner=self.request.user.pk)
 
-    def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
+#
+
+
+class NodesViewSet(viewsets.ReadOnlyModelViewSet):
+
+    queryset = get_user_model().objects.all()
+    serializer_class = NodesSerializer
+
+    def get_queryset(self):
+        return self.queryset.filter(pk=self.request.user.pk)

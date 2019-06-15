@@ -1,17 +1,17 @@
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 
-from .models import AppUser
+from .models import User
 
 
-class AppUserCreationForm(UserCreationForm):
-
-    class Meta(UserCreationForm):
-        model = AppUser
-        fields = "__all__"
-
-
-class AppUserChangeForm(UserChangeForm):
+class UserCreationFormExtended(UserCreationForm):
 
     class Meta:
-        model = AppUser
+        model = User
         fields = "__all__"
+
+
+class UserChangeFormExtended(UserChangeForm):
+
+    class Meta:
+        model = User
+        fields = ("theme", )

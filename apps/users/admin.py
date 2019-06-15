@@ -1,18 +1,32 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from .models import AppUser, Notification, Task
-from .forms import AppUserCreationForm, AppUserChangeForm
+from .models import User, Notification, Task
+from .forms import UserCreationFormExtended, UserChangeFormExtended
 
 
-@admin.register(AppUser)
-class AppUserAdmin(UserAdmin):
+@admin.register(User)
+class UserAdminExtended(UserAdmin):
 
-    model = AppUser
-    add_form = AppUserCreationForm
-    form = AppUserChangeForm
+    model = User
+    form = UserChangeFormExtended
+    add_form = UserCreationFormExtended
 
-    list_display = ["username", "email"]
+    list_display = ("username", "email")
+    fieldsets = UserAdmin.fieldsets + (
+        (
+            None, {
+                "fields": ("theme", )
+            }
+        ),
+    )
+    add_fieldsets = UserAdmin.add_fieldsets + (
+        (
+            "Permissions", {
+                "fields": ("is_staff", "is_active")
+            }
+        ),
+    )
 
 
 @admin.register(Notification)

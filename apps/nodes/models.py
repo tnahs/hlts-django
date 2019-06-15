@@ -9,9 +9,6 @@ from django.core.exceptions import ValidationError
 from django.dispatch import receiver
 
 
-User = get_user_model()
-
-
 """ Node Data """
 
 
@@ -29,11 +26,11 @@ class Origin(NodeData):
 
     class Meta:
         verbose_name = "NodeData Origin"
-        unique_together = ["owner", "name"]
+        unique_together = ("user", "name")
 
-    owner = models.ForeignKey(User,
-                              related_name="origins",
-                              on_delete=models.CASCADE)
+    user = models.ForeignKey(get_user_model(),
+                            related_name="origins",
+                            on_delete=models.CASCADE)
 
     # Origin
     name = models.CharField(max_length=128)
@@ -49,18 +46,17 @@ class Origin(NodeData):
         return f"<{self.__class__.__name__}:{self.name}>"
 
 
-
 class Individual(NodeData):
     """ Individual.aka handles those with name variants i.e. 'John Dough',
     'J. Dough' and 'Dough, John J.' would be considered the same individual. """
 
     class Meta:
         verbose_name = "NodeData Individual"
-        unique_together = ["owner", "name"]
+        unique_together = ("user", "name")
 
-    owner = models.ForeignKey(User,
-                              related_name="individuals",
-                              on_delete=models.CASCADE)
+    user = models.ForeignKey(get_user_model(),
+                             related_name="individuals",
+                             on_delete=models.CASCADE)
 
     # Individual
     name = models.CharField(max_length=256)
@@ -92,11 +88,11 @@ class Source(NodeData):
 
     class Meta:
         verbose_name = "NodeData Source"
-        unique_together = ["owner", "name"]
+        unique_together = ("user", "name")
 
-    owner = models.ForeignKey(User,
-                              related_name="sources",
-                              on_delete=models.CASCADE)
+    user = models.ForeignKey(get_user_model(),
+                            related_name="sources",
+                            on_delete=models.CASCADE)
 
     # Source
     name = models.CharField(max_length=256)
@@ -154,11 +150,11 @@ class Tag(NodeData):
 
     class Meta:
         verbose_name = "NodeData Tag"
-        unique_together = ["owner", "name"]
+        unique_together = ("user", "name")
 
-    owner = models.ForeignKey(User,
-                              related_name="tags",
-                              on_delete=models.CASCADE)
+    user = models.ForeignKey(get_user_model(),
+                            related_name="tags",
+                            on_delete=models.CASCADE)
 
     # Tag
     name = models.CharField(max_length=64)
@@ -178,11 +174,11 @@ class Collection(NodeData):
 
     class Meta:
         verbose_name = "NodeData Collection"
-        unique_together = ["owner", "name"]
+        unique_together = ("user", "name")
 
-    owner = models.ForeignKey(User,
-                              related_name="collections",
-                              on_delete=models.CASCADE)
+    user = models.ForeignKey(get_user_model(),
+                            related_name="collections",
+                            on_delete=models.CASCADE)
 
     # Collection
     name = models.CharField(max_length=64)
@@ -202,11 +198,11 @@ class Topic(NodeData):
 
     class Meta:
         verbose_name = "NodeData Topic"
-        unique_together = ["owner", "name"]
+        unique_together = ("user", "name")
 
-    owner = models.ForeignKey(User,
-                              related_name="topics",
-                              on_delete=models.CASCADE)
+    user = models.ForeignKey(get_user_model(),
+                            related_name="topics",
+                            on_delete=models.CASCADE)
 
     # Topic
     name = models.CharField(max_length=64)
@@ -223,6 +219,18 @@ class Topic(NodeData):
 
 
 """ Nodes """
+
+"""
+class BaseNode():
+
+    # TODO: Whats the best way to creat a connection between nodes?
+
+    related = models.ManyToManyField("self", blank=True)
+
+    # QUESTION: Is there any way to have this display the node type?
+    def __str__(self):
+        return self.__class__.__name__
+"""
 
 
 class Node(models.Model):
@@ -245,9 +253,6 @@ class Node(models.Model):
     in_trash = models.BooleanField(default=False)
     is_starred = models.BooleanField(default=False)
 
-    # FIXME: Can't relate nodes to nodes: images to text
-    related = models.ManyToManyField("self", blank=True)
-
     # Read-only
     topics = models.ManyToManyField(Topic, blank=True)
     count_seen = models.IntegerField(default=0)
@@ -256,30 +261,20 @@ class Node(models.Model):
     date_modified = models.DateTimeField(auto_now=True)
 
     @staticmethod
-    def image_directory(instance, filename):
+    def dir_images(instance, filename):
         # MEDIA_ROOT/user_<pk>/images/<filename>
-        return f"user_{instance.owner.pk}/images/{filename}"
-
-    @staticmethod
-    def video_directory(instance, filename):
-        # MEDIA_ROOT/user_<pk>/videos/<filename>
-        return f"user_{instance.owner.pk}/videos/{filename}"
-
-    @staticmethod
-    def document_directory(instance, filename):
-        # MEDIA_ROOT/user_<pk>/documents/<filename>
-        return f"user_{instance.owner.pk}/documents/{filename}"
+        return instance.user.dir_images / filename
 
 
 class Text(Node):
 
     class Meta:
         verbose_name = "Node Text"
-        unique_together = ["owner", "uuid"]
+        unique_together = ["user", "uuid"]
 
-    owner = models.ForeignKey(User,
-                              related_name="texts",
-                              on_delete=models.CASCADE)
+    user = models.ForeignKey(get_user_model(),
+                            related_name="texts",
+                            on_delete=models.CASCADE)
 
     # Text
     uuid = models.UUIDField(default=uuid.uuid4, unique=True)
@@ -297,12 +292,12 @@ class Image(Node):
     class Meta:
         verbose_name = "Node Image"
 
-    owner = models.ForeignKey(User,
-                              related_name="images",
-                              on_delete=models.CASCADE)
+    user = models.ForeignKey(get_user_model(),
+                            related_name="images",
+                            on_delete=models.CASCADE)
 
     # Image
-    file = models.ImageField(upload_to=Node.image_directory)
+    file = models.ImageField(upload_to=Node.dir_images)
     name = models.CharField(max_length=128, blank=True)
     description = models.TextField(blank=True)
 
@@ -311,6 +306,9 @@ class Image(Node):
 
     def __repr__(self):
         return f"<{self.__class__.__name__}:{self.file.url}>"
+
+
+User = get_user_model()
 
 
 @receiver(post_save, sender=User)
@@ -330,5 +328,5 @@ def init_new_user(instance: User, created: bool, raw: bool, **kwargs):
     if not created or raw:
         return
 
-    origin = Origin.objects.create(name="app", owner=instance)
+    origin = Origin.objects.create(name="app", user=instance)
     origin.save()

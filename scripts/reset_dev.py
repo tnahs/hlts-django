@@ -76,9 +76,9 @@ def main():
         if item.is_file() and item.suffix == ".json":
             os.system(f"python manage.py loaddata {item} --settings=config.settings.development")
 
-    os.system(f"python manage.py runserver --settings=config.settings.development")
-
     print(f"{APP_NAME} successfully reset!")
+
+    os.system(f"python manage.py runserver --settings=config.settings.development")
 
 
 if __name__ == "__main__":

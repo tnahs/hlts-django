@@ -7,12 +7,13 @@ from apps.api import views
 
 router = routers.DefaultRouter(trailing_slash=False)
 
-# TODO: read about 'basename' not sure what it is...
 # TODO: read about routers... not sure how they work...
 
-router.register("nodes", views.UserNodesViewSet, basename="nodes")
-router.register("nodes-text", views.TextViewSet, basename="nodes-text")
-router.register("nodes-image", views.ImageViewSet, basename="nodes-image")
+router.register("nodes", views.NodesViewSet)
+router.register("texts", views.TextViewSet)
+router.register("images", views.ImageViewSet)
+router.register("tags", views.TagViewSet)
+router.register("collections", views.CollectionViewSet)
 
 urlpatterns = [
     path("", include(router.urls)),

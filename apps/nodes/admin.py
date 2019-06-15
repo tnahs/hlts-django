@@ -10,26 +10,26 @@ admin.site.unregister(Group)
 
 
 class ModelAdminSaveMixin:
-    """ Mixin to append the 'owner' to object. """
+    """ Mixin to append the 'user' to object. """
 
     def save_model(self, request, obj, form, change):
-        obj.owner = request.user
+        obj.user = request.user
         super().save_model(request, obj, form, change)
 
 
 @admin.register(Origin)
 class OriginAdmin(ModelAdminSaveMixin, admin.ModelAdmin):
 
-    readonly_fields = ["owner", ]
-    search_fields = ["name", ]
+    readonly_fields = ("user", )
+    search_fields = ("name", )
 
 
 @admin.register(Individual)
 class IndividualAdmin(ModelAdminSaveMixin, admin.ModelAdmin):
 
-    readonly_fields = ["owner", ]
-    filter_horizontal = ["aka", ]
-    search_fields = ["name", ]
+    readonly_fields = ("user", )
+    filter_horizontal = ("aka", )
+    search_fields = ("name", )
 
 
 class SourceAdminForm(forms.ModelForm):
@@ -53,50 +53,50 @@ class SourceAdmin(ModelAdminSaveMixin, admin.ModelAdmin):
 
     form = SourceAdminForm
 
-    readonly_fields = ["owner", ]
-    filter_horizontal = ["individuals", ]
-    search_fields = ["name", ]
+    readonly_fields = ("user", )
+    filter_horizontal = ("individuals", )
+    search_fields = ("name", )
 
 
 @admin.register(Tag)
 class TagAdmin(ModelAdminSaveMixin, admin.ModelAdmin):
 
-    readonly_fields = ["owner", ]
+    readonly_fields = ("user", )
 
 
 @admin.register(Collection)
 class CollectionAdmin(ModelAdminSaveMixin, admin.ModelAdmin):
 
-    readonly_fields = ["owner", ]
+    readonly_fields = ("user", )
 
 
 class NodeAdmin(ModelAdminSaveMixin, admin.ModelAdmin):
 
-    list_display = ["__str__", "_source", "_tags", "_collections", "is_starred"]
-    filter_horizontal = ["tags", "collections"]
-    autocomplete_fields = ["origin", "source"]
-    readonly_fields = [
-        "owner", "date_created", "date_modified", "topics", "count_seen",
-        "count_query",
-    ]
-    fieldsets = [
-        [
+    list_display = ("__str__", "_source", "_tags", "_collections", "is_starred")
+    filter_horizontal = ("tags", "collections")
+    autocomplete_fields = ("origin", "source")
+    readonly_fields = (
+        "user", "date_created", "date_modified", "topics", "count_seen",
+        "count_query"
+    )
+    fieldsets = (
+        (
             "Node", {
-                "fields": [
+                "fields": (
                     "source", "notes", "tags", "collections", "origin",
-                    "is_starred", "in_trash", "related",
-                ],
+                    "is_starred", "in_trash"
+                ),
             },
-        ],
-        [
+        ),
+        (
             "Read-only", {
-                "fields": [
-                    "owner", "date_created", "date_modified", "topics",
-                    "count_seen", "count_query",
-                ],
+                "fields": (
+                    "user", "date_created", "date_modified", "topics",
+                    "count_seen", "count_query"
+                ),
             },
-        ],
-    ]
+        ),
+    )
 
     def _source(self, obj):
 
@@ -120,27 +120,23 @@ class NodeAdmin(ModelAdminSaveMixin, admin.ModelAdmin):
 @admin.register(Text)
 class TextAdmin(NodeAdmin):
 
-    readonly_fields = ["uuid"] + NodeAdmin.readonly_fields
-    fieldsets = [
-        [
+    readonly_fields = ("uuid", ) + NodeAdmin.readonly_fields
+    fieldsets = (
+        (
             "Text", {
-                "fields": [
-                    "uuid", "body",
-                ],
+                "fields": ("uuid", "body"),
             },
-        ]
-    ] + NodeAdmin.fieldsets
+        ),
+    ) + NodeAdmin.fieldsets
 
 
 @admin.register(Image)
 class ImageAdmin(NodeAdmin):
 
-    fieldsets = [
-        [
+    fieldsets = (
+        (
             "Image", {
-                "fields": [
-                    "file", "name", "description"
-                ],
+                "fields": ("file", "name", "description"),
             },
-        ]
-    ] + NodeAdmin.fieldsets
+        ),
+    ) + NodeAdmin.fieldsets

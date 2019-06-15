@@ -1,6 +1,6 @@
 ```
 <text>
-    owner:
+    user:
         object: <user>
         relation: ForeignKey
     uuid: uuid
@@ -28,16 +28,13 @@
     topics:
         objects: <topic>
         relation: ManyToMany
-    related:
-        objects: <text>
-        relation: ManyToMany
     count_read: int
     count_query: int
 
     is_refreshable: bool
 
 <source>
-    owner:
+    user:
         object: <user>
         relation: ForeignKey
 
@@ -52,7 +49,7 @@
     date_modified: datetime
 
 <individual>
-    owner:
+    user:
         object: <user>
         relation: ForeignKey
 
@@ -64,7 +61,7 @@
     date_modified: datetime
 
 <collection>
-    owner:
+    user:
         object: <user>
         relation: ForeignKey
 
@@ -76,7 +73,7 @@
     date_modified: datetime
 
 <tag>
-    owner:
+    user:
         object: <user>
         relation: ForeignKey
 
@@ -88,7 +85,7 @@
     date_modified: datetime
 
 <topic>
-    owner:
+    user:
         object: <user>
         relation: ForeignKey
 
@@ -97,14 +94,14 @@
     date_modified: datetime
 
 <medium>
-    owner:
+    user:
         object: <user>
         relation: ForeignKey
 
     name: string
 
 <origin>
-    owner:
+    user:
         object: <user>
         relation: ForeignKey
 

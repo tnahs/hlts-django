@@ -19,9 +19,9 @@ FIXTURE_DIRS = [
 WSGI_APPLICATION = "config.wsgi.application"
 ROOT_URLCONF = "config.urls"
 
-ALLOWED_HOSTS = ["*", ]
+ALLOWED_HOSTS = ["*"]
 
-AUTH_USER_MODEL = "users.AppUser"
+AUTH_USER_MODEL = "users.User"
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -75,9 +75,7 @@ USE_L10N = True
 USE_TZ = True
 
 REST_FRAMEWORK = {
-    "DEFAULT_PERMISSION_CLASSES": [
+    "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
-    ],
-    # "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
-    # "PAGE_SIZE": 10,
+    ),
 }
