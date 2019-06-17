@@ -113,44 +113,6 @@ class Source(NodeData):
         return f"<{self.__class__.__name__}:{self.name}>"
 
     @staticmethod
-    def validate_individuals(source_name: str,
-                             source_individuals: models.QuerySet,
-                             source_pk: Union[int, None] = None):
-        """ Custom validatation to make sure no two Sources have the same
-        Source.name and Source.individuals. Currently there's no way to set unique
-        constraints that includes ManyToManyFields in Django.
-
-        This method *must* be called manually in forms and APIs.
-
-        All parameters are related to the Source to be added or edited.
-
-        source_pk: Source's primary key
-        source_name: Source's name
-        source_individuals: Source's new individuals
-        """
-
-        # FIXME this needs to also be filtered by the user.
-        sources = Source.objects.filter(name=source_name)
-
-        if source_pk:
-            sources = sources.exclude(pk=source_pk)
-
-        if not sources:
-            return
-
-        pk_set = {individual.pk for individual in source_individuals}
-        individuals_names = ", ".join({individual.name for individual in source_individuals})
-
-        # Check the Individual primary key set against those of all found sources.
-        # If there are any Sources that have the same name and the same Individual
-        # primary key set then raise a ValidationError.
-        for source in sources:
-            existing_pk_set = {individual.pk for individual in source.individuals.all()}
-            if existing_pk_set == pk_set:
-                raise ValidationError(f"Source '{source_name}' by '{individuals_names}' "
-                                      f"already exists.")
-
-    @staticmethod
     def validate_unique_source_individuals(user,
                                            name: str,
                                            source_pk: int = None,

@@ -326,7 +326,7 @@ class NodeSerializer(serializers.HyperlinkedModelSerializer):
 
         elif action == "use_existing":
 
-            obj = Source.get_or_raise(user, name, individuals)
+            obj = Source.get_or_raise(user, name, individuals_names=individuals)
 
         elif action == "create_new":
 
