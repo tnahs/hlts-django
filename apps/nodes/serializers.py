@@ -1,5 +1,5 @@
 import django
-from django.db.models import Count
+from django.db import models
 from django.contrib.auth import get_user_model
 from rest_framework import serializers, exceptions
 
@@ -87,45 +87,38 @@ class SourceDetailSerializer(serializers.HyperlinkedModelSerializer):
 class M2MStringSerializer(serializers.Field):
 
     def __init__(self, *args, **kwargs):
+        """
+        related_column_name: str
+            default: None
+        stringify_field: str
+            default: None
+        delineator: str
+            default: " "
+        """
 
-        self.model = kwargs.pop("model", None)
+        self.related_column_name = kwargs.pop("related_column_name", None)
         self.stringify_field = kwargs.pop("stringify_field", None)
-        self.delineator = kwargs.pop("delineator", None)
+        self.delineator = kwargs.pop("delineator", " ")
 
-        if self.model is None:
-            raise ValueError("M2MStringSerializer 'model' must be defined.")
+        if self.related_column_name is None:
+            raise ValueError("M2MStringSerializer 'related_column_name' must be defined.")
 
         if self.stringify_field is None:
             raise ValueError("M2MStringSerializer 'stringify_field' must be defined.")
 
-        self.delineator = " " if self.delineator is None else self.delineator
-
         super().__init__(*args, **kwargs)
 
     def get_attribute(self, instance):
+        return getattr(instance, self.related_column_name).all()
 
-        # TODO: Is there a nicer way to do this?
-
-        if self.model == Tag:
-            return instance.tags.all()
-        elif self.model == Collection:
-            return instance.collections.all()
-        elif self.model == Individual:
-            return instance.individuals.all()
-
-    def to_representation(self, value):
+    def to_representation(self, value: models.QuerySet):
         """ Converts a QuerySet into a space-delineated string based on
-        self.stringify_field.
-
-        value:QuerySet [<Model>, <Model>, <Model>,...] """
+        self.stringify_field. """
 
         return self.delineator.join([str(getattr(i, self.stringify_field)) for i in value])
 
-    def to_internal_value(self, data):
-        """ Converts a space-delineated string into a list of self.model
-        objects.
-
-        data:str """
+    def to_internal_value(self, data: str):
+        """ Converts a space-delineated string into a list. """
 
         if not data:
             return []
@@ -139,7 +132,7 @@ class M2MStringSerializer(serializers.Field):
 class NodeSourceSerializer(serializers.HyperlinkedModelSerializer):
 
     individuals = M2MStringSerializer(
-        model=Individual,
+        related_column_name="individuals",
         stringify_field="name",
         delineator=", "
     )
@@ -260,11 +253,11 @@ class NodeSerializer(serializers.HyperlinkedModelSerializer):
     origin = serializers.StringRelatedField()
     source = NodeSourceSerializer()
     tags = M2MStringSerializer(
-        model=Tag,
+        related_column_name="tags",
         stringify_field="name"
     )
     collections = M2MStringSerializer(
-        model=Collection,
+        related_column_name="collections",
         stringify_field="name"
     )
 
