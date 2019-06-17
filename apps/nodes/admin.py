@@ -9,23 +9,28 @@ from .models import (Origin, Individual, Source, Tag, Collection, Text, Image)
 admin.site.unregister(Group)
 
 
-class ModelAdminSaveMixin:
+class ModelAdminUserMixin:
     """ Mixin to append the 'user' to object. """
 
     def save_model(self, request, obj, form, change):
         obj.user = request.user
         super().save_model(request, obj, form, change)
 
+    def get_form(self, request, *args, **kwargs):
+        form = super().get_form(request, *args, **kwargs)
+        form.user = request.user
+        return form
+
 
 @admin.register(Origin)
-class OriginAdmin(ModelAdminSaveMixin, admin.ModelAdmin):
+class OriginAdmin(ModelAdminUserMixin, admin.ModelAdmin):
 
     readonly_fields = ("user", )
     search_fields = ("name", )
 
 
 @admin.register(Individual)
-class IndividualAdmin(ModelAdminSaveMixin, admin.ModelAdmin):
+class IndividualAdmin(ModelAdminUserMixin, admin.ModelAdmin):
 
     readonly_fields = ("user", )
     filter_horizontal = ("aka", )
@@ -36,20 +41,21 @@ class SourceAdminForm(forms.ModelForm):
 
     def clean_individuals(self):
 
+        name = self.cleaned_data.get("name")
         source_pk = self.instance.pk
-        source_name = self.cleaned_data.get("name")
-        source_individuals = self.cleaned_data.get("individuals")
+        individuals_qs = self.cleaned_data.get("individuals")
 
         try:
-            Source.validate_individuals(source_pk, source_name, source_individuals)
+            Source.validate_unique_source_individuals(self.user,
+                name, source_pk=source_pk, individuals_qs=individuals_qs)
         except ValidationError:
             raise
 
-        return source_individuals
+        return individuals_qs
 
 
 @admin.register(Source)
-class SourceAdmin(ModelAdminSaveMixin, admin.ModelAdmin):
+class SourceAdmin(ModelAdminUserMixin, admin.ModelAdmin):
 
     form = SourceAdminForm
 
@@ -59,18 +65,18 @@ class SourceAdmin(ModelAdminSaveMixin, admin.ModelAdmin):
 
 
 @admin.register(Tag)
-class TagAdmin(ModelAdminSaveMixin, admin.ModelAdmin):
+class TagAdmin(ModelAdminUserMixin, admin.ModelAdmin):
 
     readonly_fields = ("user", )
 
 
 @admin.register(Collection)
-class CollectionAdmin(ModelAdminSaveMixin, admin.ModelAdmin):
+class CollectionAdmin(ModelAdminUserMixin, admin.ModelAdmin):
 
     readonly_fields = ("user", )
 
 
-class NodeAdmin(ModelAdminSaveMixin, admin.ModelAdmin):
+class NodeAdmin(ModelAdminUserMixin, admin.ModelAdmin):
 
     list_display = ("__str__", "_source", "_tags", "_collections", "is_starred")
     filter_horizontal = ("tags", "collections")

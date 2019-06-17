@@ -10,10 +10,13 @@ router = routers.DefaultRouter(trailing_slash=False)
 # TODO: read about routers... not sure how they work...
 
 router.register("nodes", views.NodesViewSet)
-router.register("texts", views.TextViewSet)
-router.register("images", views.ImageViewSet)
-router.register("tags", views.TagViewSet)
-router.register("collections", views.CollectionViewSet)
+router.register("texts", views.NodeTextViewSet)
+router.register("images", views.NodeImageViewSet)
+
+router.register("tags", views.TagDetailViewSet)
+router.register("collections", views.CollectionDetailViewSet)
+router.register("sources", views.SourceDetailViewSet)
+router.register("individuals", views.IndividualDetailViewSet)
 
 urlpatterns = [
     path("", include(router.urls)),

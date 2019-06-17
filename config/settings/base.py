@@ -78,4 +78,5 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
     ),
+    "URL_FIELD_NAME": "api_url"
 }
