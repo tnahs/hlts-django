@@ -16,24 +16,24 @@ class BaseNodeAttributesViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
 
 
-class TagDetailViewSet(BaseNodeAttributesViewSet):
+class TagViewSet(BaseNodeAttributesViewSet):
     queryset = models.Tag.objects.all()
-    serializer_class = serializers.TagDetailSerializer
+    serializer_class = serializers.TagSerializer
 
 
-class CollectionDetailViewSet(BaseNodeAttributesViewSet):
+class CollectionViewSet(BaseNodeAttributesViewSet):
     queryset = models.Collection.objects.all()
-    serializer_class = serializers.CollectionDetailSerializer
+    serializer_class = serializers.CollectionSerializer
 
 
-class IndividualDetailViewSet(BaseNodeAttributesViewSet):
+class IndividualViewSet(BaseNodeAttributesViewSet):
     queryset = models.Individual.objects.all()
-    serializer_class = serializers.IndividualDetailSerializer
+    serializer_class = serializers.IndividualSerializer
 
 
-class SourceDetailViewSet(BaseNodeAttributesViewSet):
+class SourceViewSet(BaseNodeAttributesViewSet):
     queryset = models.Source.objects.all()
-    serializer_class = serializers.SourceDetailSerializer
+    serializer_class = serializers.SourceSerializer
 
 
 #

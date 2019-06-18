@@ -13,10 +13,10 @@ router.register("nodes", views.NodesViewSet)
 router.register("texts", views.NodeTextViewSet)
 router.register("images", views.NodeImageViewSet)
 
-router.register("tags", views.TagDetailViewSet)
-router.register("collections", views.CollectionDetailViewSet)
-router.register("sources", views.SourceDetailViewSet)
-router.register("individuals", views.IndividualDetailViewSet)
+router.register("tags", views.TagViewSet)
+router.register("collections", views.CollectionViewSet)
+router.register("sources", views.SourceViewSet)
+router.register("individuals", views.IndividualViewSet)
 
 urlpatterns = [
     path("", include(router.urls)),
