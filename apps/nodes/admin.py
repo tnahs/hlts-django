@@ -3,7 +3,7 @@ from django.contrib import admin
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
 
-from .models import (Origin, Individual, Source, Tag, Collection, Text, Image)
+from .models import Origin, Individual, Source, Tag, Collection, Node
 
 
 admin.site.unregister(Group)
@@ -32,6 +32,11 @@ class OriginAdmin(ModelAdminUserMixin, admin.ModelAdmin):
 @admin.register(Individual)
 class IndividualAdmin(ModelAdminUserMixin, admin.ModelAdmin):
 
+    # FIXME: Admin page doesnt handle unique-together validation when "user"
+    # is a read-only field. Need to find a way to hide this field but also
+    # run the unique-together validation method. This also applies to any other
+    # fields with the same basic configuration.
+
     readonly_fields = ("user", )
     filter_horizontal = ("aka", )
     search_fields = ("name", )
@@ -39,19 +44,28 @@ class IndividualAdmin(ModelAdminUserMixin, admin.ModelAdmin):
 
 class SourceAdminForm(forms.ModelForm):
 
-    def clean_individuals(self):
+    def clean(self):
+        """ See Source model in nodes.models for notes. """
 
+        pk = self.instance.pk
         name = self.cleaned_data.get("name")
-        source_pk = self.instance.pk
-        individuals_qs = self.cleaned_data.get("individuals")
+        individuals = self.cleaned_data.get("individuals")
+
+        if not name and not individuals:
+            error = forms.ValidationError(
+                "Either 'name' or 'individuals' must be defined."
+            )
+            self.add_error("name", error)
+            self.add_error("individuals", error)
 
         try:
-            Source.validate_unique_source_individuals(self.user,
-                name, source_pk=source_pk, individuals_qs=individuals_qs)
-        except ValidationError:
-            raise
+            Source.validate_unique_together(
+                self.user, name, individuals, source_pk=pk
+            )
+        except ValidationError as error:
+            raise forms.ValidationError(error.message)
 
-        return individuals_qs
+        return self.cleaned_data
 
 
 @admin.register(Source)
@@ -76,9 +90,10 @@ class CollectionAdmin(ModelAdminUserMixin, admin.ModelAdmin):
     readonly_fields = ("user", )
 
 
+@admin.register(Node)
 class NodeAdmin(ModelAdminUserMixin, admin.ModelAdmin):
 
-    list_display = ("__str__", "_source", "_tags", "_collections", "is_starred")
+    list_display = ("__str__", "source", "_tags", "_collections", "is_starred")
     filter_horizontal = ("tags", "collections")
     autocomplete_fields = ("origin", "source")
     readonly_fields = (
@@ -89,8 +104,9 @@ class NodeAdmin(ModelAdminUserMixin, admin.ModelAdmin):
         (
             "Node", {
                 "fields": (
-                    "source", "notes", "tags", "collections", "origin",
-                    "is_starred", "in_trash"
+                    "uuid", "body", "file", "source", "notes", "tags",
+                    "collections", "origin", "is_starred", "in_trash",
+                    "related"
                 ),
             },
         ),
@@ -104,45 +120,8 @@ class NodeAdmin(ModelAdminUserMixin, admin.ModelAdmin):
         ),
     )
 
-    def _source(self, obj):
-
-        if not obj.source:
-            return ""
-
-        if not obj.source.individuals.count():
-            return obj.source.name
-
-        individuals = ", ".join([a.name for a in obj.source.individuals.all()])
-
-        return f"{obj.source.name} - {individuals}"
-
     def _tags(self, obj):
         return ", ".join([t.name for t in obj.tags.all()])
 
     def _collections(self, obj):
         return ", ".join([c.name for c in obj.collections.all()])
-
-
-@admin.register(Text)
-class TextAdmin(NodeAdmin):
-
-    readonly_fields = ("uuid", ) + NodeAdmin.readonly_fields
-    fieldsets = (
-        (
-            "Text", {
-                "fields": ("uuid", "body"),
-            },
-        ),
-    ) + NodeAdmin.fieldsets
-
-
-@admin.register(Image)
-class ImageAdmin(NodeAdmin):
-
-    fieldsets = (
-        (
-            "Image", {
-                "fields": ("file", "name", "description"),
-            },
-        ),
-    ) + NodeAdmin.fieldsets

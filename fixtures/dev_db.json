@@ -211,7 +211,7 @@
         }
     },
     {
-        "model": "nodes.text",
+        "model": "nodes.node",
         "pk": 1,
         "fields": {
             "source": null,
@@ -226,6 +226,7 @@
             "user": 1,
             "uuid": "6285656d-0d02-487e-ae07-f05ada035420",
             "body": "Integer commodo tincidunt felis, a posuere sapien iaculis a. Mauris fermentum dignissim ligula, sed auctor orci interdum sed. Etiam ornare posuere arcu. Vestibulum porttitor blandit nibh, eu tincidunt dolor viverra eu. Nam elementum odio quis nibh tempus, sed facilisis lectus suscipit. Quisque vitae nisi bibendum, bibendum nibh at, ornare neque. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce sem nisl, vehicula a faucibus id, elementum at ex. Nulla a purus id libero maximus laoreet in vitae magna. Sed facilisis sed ex eget laoreet. Suspendisse vel fermentum nisl. Nunc maximus condimentum consectetur. Vivamus et pellentesque turpis, vitae blandit magna.",
+            "file": "",
             "tags": [
                 1
             ],
@@ -234,7 +235,7 @@
         }
     },
     {
-        "model": "nodes.text",
+        "model": "nodes.node",
         "pk": 2,
         "fields": {
             "source": null,
@@ -249,6 +250,7 @@
             "user": 1,
             "uuid": "e1d0014b-189f-49bd-9631-4d0c8467c9ab",
             "body": "Aliquam imperdiet sed metus nec feugiat. Sed velit orci, tempus quis nulla vel, ullamcorper lacinia ex. Maecenas eu dapibus felis. Nunc ac feugiat orci. Integer dictum metus id ligula gravida ullamcorper. Aliquam elementum ipsum nunc, eu sagittis nunc dictum ut. Maecenas consectetur libero ac sem dictum tincidunt. Morbi tincidunt tortor ipsum, et volutpat ligula euismod sit amet. Maecenas eget maximus sapien. Donec interdum et libero quis convallis. Suspendisse bibendum odio sed venenatis imperdiet.",
+            "file": "",
             "tags": [
                 1,
                 2,
@@ -261,7 +263,7 @@
         }
     },
     {
-        "model": "nodes.text",
+        "model": "nodes.node",
         "pk": 3,
         "fields": {
             "source": 1,
@@ -276,6 +278,7 @@
             "user": 1,
             "uuid": "52ff1215-8076-4d93-bfe4-2009d05dafd7",
             "body": "Donec consequat, neque sit amet bibendum fringilla, nisi diam tempus tortor, ut pulvinar erat leo ut metus. Aenean dignissim malesuada faucibus. Proin nec justo eget diam commodo eleifend. Duis vulputate metus ut convallis condimentum. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse potenti. Proin vitae faucibus quam, et tempor risus. Etiam finibus velit eros, at tincidunt ligula pharetra in. Duis pretium eu erat in fermentum. Duis fermentum ac risus sit amet porta. Sed hendrerit dolor in convallis gravida. Donec blandit neque eu libero eleifend tempus.",
+            "file": "",
             "tags": [
                 2,
                 3
@@ -287,7 +290,7 @@
         }
     },
     {
-        "model": "nodes.text",
+        "model": "nodes.node",
         "pk": 4,
         "fields": {
             "source": null,
@@ -302,6 +305,7 @@
             "user": 2,
             "uuid": "d572d630-8eaa-11e9-bc42-526af7764f64",
             "body": "Mauris fermentum dignissim ligula, sed auctor orci interdum sed.",
+            "file": "",
             "tags": [
                 5
             ],
@@ -310,7 +314,7 @@
         }
     },
     {
-        "model": "nodes.image",
+        "model": "nodes.node",
         "pk": 1,
         "fields": {
             "source": null,
@@ -323,9 +327,9 @@
             "date_created": "0001-01-01T00:00:00Z",
             "date_modified": "0001-01-01T00:00:00Z",
             "user": 1,
+            "uuid": "7c9d9828-92ac-11e9-bc42-526af7764f64",
+            "body": "",
             "file": "user_1/images/4.jpg",
-            "name": "",
-            "description": "",
             "tags": [
                 2,
                 3
@@ -337,7 +341,7 @@
         }
     },
     {
-        "model": "nodes.image",
+        "model": "nodes.node",
         "pk": 2,
         "fields": {
             "source": null,
@@ -350,9 +354,9 @@
             "date_created": "0001-01-01T00:00:00Z",
             "date_modified": "0001-01-01T00:00:00Z",
             "user": 1,
+            "uuid": "7c9d9ad0-92ac-11e9-bc42-526af7764f64",
+            "body": "",
             "file": "user_1/images/bookscanner.gif",
-            "name": "",
-            "description": "",
             "tags": [
                 3
             ],
@@ -364,7 +368,7 @@
         }
     },
     {
-        "model": "nodes.image",
+        "model": "nodes.node",
         "pk": 3,
         "fields": {
             "source": null,
@@ -377,9 +381,9 @@
             "date_created": "0001-01-01T00:00:00Z",
             "date_modified": "0001-01-01T00:00:00Z",
             "user": 1,
+            "uuid": "7c9d9c9c-92ac-11e9-bc42-526af7764f64",
+            "body": "",
             "file": "user_1/images/PragmataPro_Haskell.png",
-            "name": "",
-            "description": "",
             "tags": [
                 2
             ],

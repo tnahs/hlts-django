@@ -1,6 +1,6 @@
 
 import uuid
-from typing import List
+from typing import List, Union
 
 from django.db import models
 from django.contrib.auth import get_user_model
@@ -12,7 +12,7 @@ from django.dispatch import receiver
 """ Node Data """
 
 
-class NodeData(models.Model):
+class NodeAttribute(models.Model):
 
     class Meta:
         abstract = True
@@ -22,10 +22,10 @@ class NodeData(models.Model):
     date_modified = models.DateTimeField(auto_now=True)
 
 
-class Origin(NodeData):
+class Origin(NodeAttribute):
 
     class Meta:
-        verbose_name = "NodeData Origin"
+        verbose_name = "NodeAttribute Origin"
         unique_together = ("user", "name")
 
     user = models.ForeignKey(get_user_model(),
@@ -46,12 +46,12 @@ class Origin(NodeData):
         return f"<{self.__class__.__name__}:{self.name}>"
 
 
-class Individual(NodeData):
+class Individual(NodeAttribute):
     """ Individual.aka handles those with name variants i.e. 'John Dough',
     'J. Dough' and 'Dough, John J.' would be considered the same individual. """
 
     class Meta:
-        verbose_name = "NodeData Individual"
+        verbose_name = "NodeAttribute Individual"
         unique_together = ("user", "name")
 
     user = models.ForeignKey(get_user_model(),
@@ -81,21 +81,48 @@ class Individual(NodeData):
         return self.name
 
 
-class Source(NodeData):
+class SourceManager(models.Manager):
+
+    def get_queryset(self):
+        return super().get_queryset()
+
+    def get_or_create(self, user, name: str,
+                      individuals: List[Union[int, Individual, str]]):
+
+        # TODO: Document this.
+
+        sources = self.get_queryset().filter(name=name, user=user)
+
+        # TODO: Add that query method that culled itself by the number of items
+        # in the m2m relationship.
+
+        if not sources:
+            return self.get_queryset().create(name=name, user=user)
+
+        new_pks = Source.get_individuals_pks(user, individuals)
+
+        for source in sources:
+            source_pks = {i.pk for i in source.individuals.all()}
+            if source_pks == new_pks:
+                return source
+
+        return self.get_queryset().create(name=name, user=user)
+
+
+class Source(NodeAttribute):
     """ A Source may have multiple individuals. But two sources cannot
     have same set of multiple individuals. This is enforced using a signal
     receiver verify_source_individuals_is_unique() below. """
 
     class Meta:
-        verbose_name = "NodeData Source"
-        # unique_together = ("user", "name")
+        verbose_name = "NodeAttribute Source"
 
     user = models.ForeignKey(get_user_model(),
                             related_name="sources",
                             on_delete=models.CASCADE)
 
     # Source
-    name = models.CharField(max_length=256)
+    name = models.CharField(max_length=256, blank=True)
     individuals = models.ManyToManyField(Individual,
                                          blank=True)
     url = models.URLField(max_length=256, blank=True)
@@ -106,21 +133,41 @@ class Source(NodeData):
     date_created = models.DateTimeField(auto_now_add=True)
     date_modified = models.DateTimeField(auto_now=True)
 
+    objects = SourceManager()
+
     def __str__(self):
-        return self.name
+
+        if not self.individuals:
+            return self.name
+
+        if not self.name:
+            return self.by
+
+        return f"{self.name} - {self.by}"
 
     def __repr__(self):
-        return f"<{self.__class__.__name__}:{self.name}>"
+        return f"<{self.__class__.__name__}:{self.__str__()}>"
+
+    @property
+    def by(self):
+        return ", ".join([i.name for i in self.individuals.all()])
+
+    # NOTE: Field validation has be done at the form/serializer level because
+    # of the way Django handles many-to-many relationships. Primary keys are
+    # needed to perform the Model.clean() method when validating a unique
+    # together between a field and a many-to-many relationship. The following
+    # validation methods **must** be called before any database transaction.
 
     @staticmethod
-    def validate_unique_source_individuals(user,
-                                           name: str,
-                                           source_pk: int = None,
-                                           individuals_pks: List[int] = None,
-                                           individuals_qs: models.QuerySet = None,
-                                           individuals_names: List[str] = None):
+    def validate_unique_together(user, name: str,
+                                 individuals: List[Union[int, Individual, str]],
+                                 source_pk: int = None):
+        # TODO: Document this.
 
         sources = Source.objects.filter(name=name, user=user)
+
+        # TODO: Add that query method that culled itself by the number of items
+        # in the m2m relationship.
 
         if source_pk:
             sources = sources.exclude(pk=source_pk)
@@ -128,98 +175,45 @@ class Source(NodeData):
         if not sources:
             return
 
-        pk_set = set()
-        individuals_display_names = ""
+        new_pks = Source.get_individuals_pks(user, individuals)
 
-        if individuals_pks:
-
-            pk_set = individuals_pks
-            individuals_display_names = ", ".join(Individual.objects.get(pk=pk).name for pk in pk_set)
-
-        elif individuals_qs:
-
-            pk_set = {individual.pk for individual in individuals_qs}
-            individuals_display_names = ", ".join({individual.name for individual in individuals_qs})
-
-        elif individuals_names:
-
-            for individual in individuals_names:
-
-                try:
-                    obj = Individual.objects.get(
-                        name=individual,
-                        user=user
-                    )
-                except Individual.DoesNotExist:
-                    pk_set.add(-1)
-                else:
-                    pk_set.add(obj.pk)
-
-            individuals_display_names = ", ".join(individuals_names)
-
-        # Check the Individual primary key set against those of all found sources.
-        # If there are any Sources that have the same name and the same Individual
-        # primary key set then raise a ValidationError.
         for source in sources:
-            existing_pk_set = {individual.pk for individual in source.individuals.all()}
-            if existing_pk_set == pk_set:
-                raise ValidationError(f"Source '{name}' by '{individuals_display_names}' already exists.")
+            source_pks = {i.pk for i in source.individuals.all()}
+            if source_pks == new_pks:
+                raise ValidationError(
+                    f"Source '{name}' with selected individuals already exists.")
 
     @staticmethod
-    def get_or_raise(user,
-                     name: str,
-                     individuals_pks: List[int] = None,
-                     individuals_qs: models.QuerySet = None,
-                     individuals_names: List[str] = None):
+    def get_individuals_pks(user, individuals: List[Union[int, Individual, str]]):
 
-        sources = Source.objects.filter(name=name, user=user)
+        # TODO: Document this.
 
-        if not sources:
-            raise ValidationError(f"Source '{name}' does not exist.",
-                                  code="source_only")
+        if not individuals:
+            return []
 
-        pk_set = set()
-        individuals_display_names = ""
-
-        if individuals_pks:
-
-            pk_set = individuals_pks
-            individuals_display_names = ", ".join(Individual.objects.get(pk=pk).name for pk in pk_set)
-
-        elif individuals_qs:
-
-            pk_set = {individual.pk for individual in individuals_qs}
-            individuals_display_names = ", ".join({individual.name for individual in individuals_qs})
-
-        elif individuals_names:
-
-            for individual in individuals_names:
-
+        if isinstance(individuals[0], int):
+            return individuals
+        elif isinstance(individuals[0], Individual):
+            return {i.pk for i in individuals}
+        elif isinstance(individuals[0], str):
+            pks = []
+            for name in individuals:
                 try:
-                    obj = Individual.objects.get(
-                        name=individual,
-                        user=user
-                    )
+                    obj = Individual.objects.get(name=name, user=user)
                 except Individual.DoesNotExist:
-                    pk_set.add(-1)
+                    pks.add(None)
                 else:
-                    pk_set.add(obj.pk)
-
-            individuals_display_names = ", ".join(individuals_names)
-
-        for source in sources:
-            existing_pk_set = {individual.pk for individual in source.individuals.all()}
-            if existing_pk_set == pk_set:
-                return source
-
-        raise ValidationError(f"Source '{name}' by '{individuals_display_names}' does not exist.",
-                              code="source_and_individual")
+                    pks.add(obj.pk)
+            return pks
+        else:
+            raise TypeError(f"Unrecognized type {type(individuals[0])} in "
+                            f"{individuals}.")
 
 
-class Tag(NodeData):
+class Tag(NodeAttribute):
 
     class Meta:
-        verbose_name = "NodeData Tag"
+        verbose_name = "NodeAttribute Tag"
         unique_together = ("user", "name")
 
     user = models.ForeignKey(get_user_model(),
@@ -240,10 +234,10 @@ class Tag(NodeData):
         return f"<{self.__class__.__name__}:{self.name}>"
 
 
-class Collection(NodeData):
+class Collection(NodeAttribute):
 
     class Meta:
-        verbose_name = "NodeData Collection"
+        verbose_name = "NodeAttribute Collection"
         unique_together = ("user", "name")
 
     user = models.ForeignKey(get_user_model(),
@@ -264,10 +258,10 @@ class Collection(NodeData):
         return f"<{self.__class__.__name__}:{self.name}>"
 
 
-class Topic(NodeData):
+class Topic(NodeAttribute):
 
     class Meta:
-        verbose_name = "NodeData Topic"
+        verbose_name = "NodeAttribute Topic"
         unique_together = ("user", "name")
 
     user = models.ForeignKey(get_user_model(),
@@ -295,7 +289,6 @@ class BaseNode():
 
     # TODO: Whats the best way to creat a connection between nodes?
 
-    related = models.ManyToManyField("self", blank=True)
 
     # QUESTION: Is there any way to have this display the node type?
     def __str__(self):
@@ -306,7 +299,16 @@ class BaseNode():
 class Node(models.Model):
 
     class Meta:
-        abstract = True
+        unique_together = ["user", "uuid"]
+
+    user = models.ForeignKey(get_user_model(),
+                             related_name="nodes",
+                             on_delete=models.CASCADE)
+
+    uuid = models.UUIDField(default=uuid.uuid4, unique=True)
+
+    body = models.TextField()
+    file = models.FileField(upload_to="files", blank=True)
 
     source = models.ForeignKey(Source,
                                on_delete=models.CASCADE,
@@ -323,6 +325,8 @@ class Node(models.Model):
     in_trash = models.BooleanField(default=False)
     is_starred = models.BooleanField(default=False)
 
+    related = models.ManyToManyField("self", blank=True)
+
     # Read-only
     topics = models.ManyToManyField(Topic, blank=True)
     count_seen = models.IntegerField(default=0)
@@ -335,21 +339,6 @@ class Node(models.Model):
         # MEDIA_ROOT/user_<pk>/images/<filename>
         return instance.user.dir_images / filename
 
-
-class Text(Node):
-
-    class Meta:
-        verbose_name = "Node Text"
-        unique_together = ["user", "uuid"]
-
-    user = models.ForeignKey(get_user_model(),
-                             related_name="texts",
-                             on_delete=models.CASCADE)
-
-    # Text
-    uuid = models.UUIDField(default=uuid.uuid4, unique=True)
-    body = models.TextField()
-
     def __str__(self):
         return f"{self.body[:64]}..."
 
@@ -357,25 +346,46 @@ class Text(Node):
         return f"<{self.__class__.__name__}:{self.uuid}>"
 
 
-class Image(Node):
+# class Text(Node):
 
-    class Meta:
-        verbose_name = "Node Image"
+#     class Meta:
+#         verbose_name = "Node Text"
+#         unique_together = ["user", "uuid"]
 
-    user = models.ForeignKey(get_user_model(),
-                            related_name="images",
-                            on_delete=models.CASCADE)
+#     user = models.ForeignKey(get_user_model(),
+#                              related_name="texts",
+#                              on_delete=models.CASCADE)
 
-    # Image
-    file = models.ImageField(upload_to=Node.dir_images)
-    name = models.CharField(max_length=128, blank=True)
-    description = models.TextField(blank=True)
+#     # Text
+#     uuid = models.UUIDField(default=uuid.uuid4, unique=True)
+#     body = models.TextField()
 
-    def __str__(self):
-        return self.file.url
+#     def __str__(self):
+#         return f"{self.body[:64]}..."
 
-    def __repr__(self):
-        return f"<{self.__class__.__name__}:{self.file.url}>"
+#     def __repr__(self):
+#         return f"<{self.__class__.__name__}:{self.uuid}>"
+
+
+# class Image(Node):
+
+#     class Meta:
+#         verbose_name = "Node Image"
+
+#     user = models.ForeignKey(get_user_model(),
+#                             related_name="images",
+#                             on_delete=models.CASCADE)
+
+#     # Image
+#     file = models.ImageField(upload_to=Node.dir_images)
+#     name = models.CharField(max_length=128, blank=True)
+#     description = models.TextField(blank=True)
+
+#     def __str__(self):
+#         return self.file.url
+
+#     def __repr__(self):
+#         return f"<{self.__class__.__name__}:{self.file.url}>"
 
 
 User = get_user_model()
