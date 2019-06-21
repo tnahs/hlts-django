@@ -1,0 +1,424 @@
+[
+{
+    "model": "users.user",
+    "pk": 1,
+    "fields": {
+        "password": "pbkdf2_sha256$150000$47wzpMcauhsu$vCY/2c9f8K75C4p4kV8ihjNdgBC4hJR0y8+0Y3ajAuM=",
+        "last_login": "2019-06-21T16:56:23.712Z",
+        "is_superuser": true,
+        "username": "admin",
+        "first_name": "Admin",
+        "last_name": "User",
+        "email": "admin@email.com",
+        "is_staff": true,
+        "is_active": true,
+        "date_joined": "0001-01-01T00:00:00Z",
+        "theme": 0,
+        "groups": [],
+        "user_permissions": []
+    }
+},
+{
+    "model": "users.user",
+    "pk": 2,
+    "fields": {
+        "password": "pbkdf2_sha256$150000$Akz7zjClqv3l$MXzUYZysIgy+FaJOVJZU1tD2WoOFAMsXuuYrCeNm50o=",
+        "last_login": null,
+        "is_superuser": false,
+        "username": "guest",
+        "first_name": "Guest",
+        "last_name": "User",
+        "email": "guest@email.com",
+        "is_staff": false,
+        "is_active": true,
+        "date_joined": "0001-01-01T00:00:00Z",
+        "theme": 0,
+        "groups": [],
+        "user_permissions": []
+    }
+},
+{
+    "model": "nodes.origin",
+    "pk": 1,
+    "fields": {
+        "user": 1,
+        "name": "dev-app",
+        "date_created": "2019-06-21T15:36:03.353Z",
+        "date_modified": "2019-06-21T15:36:03.353Z"
+    }
+},
+{
+    "model": "nodes.individual",
+    "pk": 1,
+    "fields": {
+        "user": 1,
+        "name": "Egestas Blandit",
+        "first_name": "",
+        "last_name": "",
+        "date_created": "2019-06-21T15:59:58.199Z",
+        "date_modified": "2019-06-21T15:59:58.199Z",
+        "aka": []
+    }
+},
+{
+    "model": "nodes.individual",
+    "pk": 2,
+    "fields": {
+        "user": 1,
+        "name": "Dapibus Semper",
+        "first_name": "",
+        "last_name": "",
+        "date_created": "2019-06-21T16:17:28.832Z",
+        "date_modified": "2019-06-21T16:17:28.832Z",
+        "aka": []
+    }
+},
+{
+    "model": "nodes.source",
+    "pk": 1,
+    "fields": {
+        "user": 1,
+        "name": "Fusce Vitae",
+        "url": "",
+        "date": null,
+        "notes": "",
+        "date_created": "2019-06-21T16:01:48.774Z",
+        "date_modified": "2019-06-21T16:01:48.774Z",
+        "individuals": [
+            1
+        ]
+    }
+},
+{
+    "model": "nodes.source",
+    "pk": 2,
+    "fields": {
+        "user": 1,
+        "name": "Quisque at Arcu",
+        "url": "",
+        "date": null,
+        "notes": "",
+        "date_created": "2019-06-21T16:17:33.008Z",
+        "date_modified": "2019-06-21T16:17:33.008Z",
+        "individuals": [
+            1,
+            2
+        ]
+    }
+},
+{
+    "model": "nodes.tag",
+    "pk": 1,
+    "fields": {
+        "user": 1,
+        "name": "posuere",
+        "date_created": "2019-06-21T15:58:05.754Z",
+        "date_modified": "2019-06-21T15:58:05.754Z"
+    }
+},
+{
+    "model": "nodes.tag",
+    "pk": 2,
+    "fields": {
+        "user": 1,
+        "name": "maecenas",
+        "date_created": "2019-06-21T15:58:12.306Z",
+        "date_modified": "2019-06-21T15:58:12.306Z"
+    }
+},
+{
+    "model": "nodes.tag",
+    "pk": 3,
+    "fields": {
+        "user": 1,
+        "name": "bibendum",
+        "date_created": "2019-06-21T15:58:15.998Z",
+        "date_modified": "2019-06-21T15:58:15.998Z"
+    }
+},
+{
+    "model": "nodes.tag",
+    "pk": 4,
+    "fields": {
+        "user": 1,
+        "name": "facilisis",
+        "date_created": "2019-06-21T15:58:19.347Z",
+        "date_modified": "2019-06-21T15:58:19.347Z"
+    }
+},
+{
+    "model": "nodes.tag",
+    "pk": 5,
+    "fields": {
+        "user": 1,
+        "name": "mauris",
+        "date_created": "2019-06-21T15:58:23.346Z",
+        "date_modified": "2019-06-21T15:58:23.346Z"
+    }
+},
+{
+    "model": "nodes.tag",
+    "pk": 6,
+    "fields": {
+        "user": 1,
+        "name": "efficitur",
+        "date_created": "2019-06-21T15:58:26.687Z",
+        "date_modified": "2019-06-21T15:58:26.687Z"
+    }
+},
+{
+    "model": "nodes.collection",
+    "pk": 1,
+    "fields": {
+        "user": 1,
+        "name": "pellentesque",
+        "color": "purple",
+        "description": "Fusce vel eros id nisl rutrum lobortis. Nam blandit mauris velit.",
+        "date_created": "2019-06-21T15:58:54.523Z",
+        "date_modified": "2019-06-21T15:58:54.523Z"
+    }
+},
+{
+    "model": "nodes.collection",
+    "pk": 2,
+    "fields": {
+        "user": 1,
+        "name": "quisque-porttitor",
+        "color": "green",
+        "description": "Nullam facilisis urna quis mi porta, ut congue urna eleifend. Mauris vel purus molestie massa convallis iaculis id ac tortor. Nam placerat quis sem vehicula ornare. Ut fermentum accumsan vulputate.",
+        "date_created": "2019-06-21T15:59:13.560Z",
+        "date_modified": "2019-06-21T15:59:13.560Z"
+    }
+},
+{
+    "model": "nodes.node",
+    "pk": 1,
+    "fields": {
+        "user": 1,
+        "uuid": "d1c1ece0-19be-45bb-9083-06efd3eaa77f",
+        "text": "Sed ac bibendum massa, at ornare urna. Donec in nisl faucibus, tempor magna hendrerit, placerat ligula. Vestibulum et semper lacus. Phasellus pulvinar arcu libero, at placerat sem elementum quis. Suspendisse feugiat, quam in rutrum viverra, tortor mi elementum nibh, et pellentesque orci magna a ex. Proin tincidunt arcu eu fringilla iaculis. Aliquam ante elit, porttitor vitae sapien at, commodo euismod nunc. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum commodo luctus augue ac pretium. Nulla facilisi. Suspendisse lectus massa, viverra eget eros quis, convallis accumsan sapien. Integer quis dui ac ante posuere tincidunt sed vel velit. Aenean scelerisque vestibulum diam, non pharetra dui luctus eget.",
+        "file": "",
+        "source": 1,
+        "notes": "",
+        "origin": 1,
+        "in_trash": false,
+        "is_starred": false,
+        "count_seen": 0,
+        "count_query": 0,
+        "date_created": "2019-06-21T15:36:06.547Z",
+        "date_modified": "2019-06-21T16:57:28.180Z",
+        "tags": [
+            1,
+            5,
+            6
+        ],
+        "collections": [],
+        "related": [
+            3,
+            5
+        ],
+        "topics": []
+    }
+},
+{
+    "model": "nodes.node",
+    "pk": 2,
+    "fields": {
+        "user": 1,
+        "uuid": "ce29ca55-9b7d-4a6a-8cc9-50ec9d31db30",
+        "text": "Curabitur ornare nulla lacus, quis volutpat metus posuere a. Nullam condimentum erat nec consectetur posuere. Phasellus et metus pretium, faucibus justo eu, interdum mauris. Vivamus mollis velit nec sem condimentum rhoncus. Sed eros libero, aliquet sed consectetur id, sollicitudin a sem. Nullam lobortis pretium erat eget gravida. Sed id mauris at eros sagittis consequat. Etiam aliquet sapien vitae tellus placerat, a suscipit ante ullamcorper. Phasellus placerat aliquet metus non pellentesque. Praesent turpis nisi, sodales vitae mi dictum, egestas vehicula tellus.",
+        "file": "",
+        "source": 2,
+        "notes": "",
+        "origin": 1,
+        "in_trash": false,
+        "is_starred": false,
+        "count_seen": 0,
+        "count_query": 0,
+        "date_created": "2019-06-21T15:36:21.400Z",
+        "date_modified": "2019-06-21T16:57:47.570Z",
+        "tags": [
+            5
+        ],
+        "collections": [
+            1,
+            2
+        ],
+        "related": [],
+        "topics": []
+    }
+},
+{
+    "model": "nodes.node",
+    "pk": 3,
+    "fields": {
+        "user": 1,
+        "uuid": "69fde879-7fcf-4c21-99ac-065fd8d6a4dd",
+        "text": "Integer accumsan, ex vitae eleifend feugiat, lorem justo tristique enim, quis placerat eros dui vel arcu. Duis vitae mauris velit. Vivamus mi ipsum, consequat ut velit at, blandit venenatis leo. Praesent nec dolor laoreet, tempus nunc vel, maximus nibh. Pellentesque augue leo, sollicitudin a malesuada sit amet, congue et neque. Nullam eget augue at orci hendrerit lacinia vel eu mauris. Sed non lorem non ipsum viverra efficitur. Quisque scelerisque justo ut mattis pretium. Integer vel tortor sem. Vivamus malesuada justo justo, et elementum ante bibendum eu. Vivamus iaculis, velit sit amet suscipit viverra, neque justo rutrum nisl, vitae posuere metus erat non quam. Duis blandit eros molestie, gravida ante et, tincidunt velit. Nunc convallis quis dolor id sollicitudin. Proin aliquam gravida tellus id fermentum. Praesent consectetur, velit vitae consectetur accumsan, arcu sem rhoncus est, eu tincidunt leo enim hendrerit lectus.\r\n\r\nUt porta urna eu massa egestas, non sagittis massa bibendum. Nunc id nisi eu sapien cursus dapibus. Morbi id ante lorem. Praesent viverra sapien tempus malesuada malesuada. Maecenas pellentesque leo et sollicitudin pulvinar. Mauris non ornare lectus, et volutpat ante. Aenean dapibus est est, id sagittis erat malesuada ut. Donec elementum dictum posuere. Nullam sollicitudin rhoncus nibh venenatis mollis. Praesent ut venenatis augue. Vivamus interdum porttitor dolor vitae molestie. Aliquam nec leo nec enim porttitor auctor.",
+        "file": "",
+        "source": 1,
+        "notes": "",
+        "origin": 1,
+        "in_trash": false,
+        "is_starred": false,
+        "count_seen": 0,
+        "count_query": 0,
+        "date_created": "2019-06-21T15:36:41.185Z",
+        "date_modified": "2019-06-21T16:57:13.490Z",
+        "tags": [
+            4
+        ],
+        "collections": [],
+        "related": [
+            1,
+            4,
+            8
+        ],
+        "topics": []
+    }
+},
+{
+    "model": "nodes.node",
+    "pk": 4,
+    "fields": {
+        "user": 1,
+        "uuid": "7b527ee5-b338-46b8-8a71-b3bd5ad30260",
+        "text": "Pellentesque ac leo in massa posuere egestas sed sit amet leo.",
+        "file": "",
+        "source": 1,
+        "notes": "",
+        "origin": 1,
+        "in_trash": false,
+        "is_starred": false,
+        "count_seen": 0,
+        "count_query": 0,
+        "date_created": "2019-06-21T15:37:04.976Z",
+        "date_modified": "2019-06-21T16:57:38.230Z",
+        "tags": [
+            1,
+            2,
+            3,
+            4,
+            6
+        ],
+        "collections": [],
+        "related": [
+            3,
+            8
+        ],
+        "topics": []
+    }
+},
+{
+    "model": "nodes.node",
+    "pk": 5,
+    "fields": {
+        "user": 1,
+        "uuid": "911e2a00-eb82-4570-a47b-673df46dbaeb",
+        "text": "",
+        "file": "user_1/4.jpg",
+        "source": null,
+        "notes": "",
+        "origin": 1,
+        "in_trash": false,
+        "is_starred": false,
+        "count_seen": 0,
+        "count_query": 0,
+        "date_created": "2019-06-21T15:37:21.749Z",
+        "date_modified": "2019-06-21T16:30:40.584Z",
+        "tags": [],
+        "collections": [
+            1
+        ],
+        "related": [
+            1
+        ],
+        "topics": []
+    }
+},
+{
+    "model": "nodes.node",
+    "pk": 6,
+    "fields": {
+        "user": 1,
+        "uuid": "5abaa3ad-ba3f-4ecd-ac67-65121350a222",
+        "text": "Duis mauris magna, sagittis sit amet sem id, pretium gravida metus. Ut maximus felis tempus quam tristique, ac convallis tellus varius. Donec ullamcorper ex nibh. Nullam interdum congue mauris, quis mollis felis lacinia in.",
+        "file": "user_1/bookscanner.gif",
+        "source": 2,
+        "notes": "",
+        "origin": 1,
+        "in_trash": false,
+        "is_starred": false,
+        "count_seen": 0,
+        "count_query": 0,
+        "date_created": "2019-06-21T15:37:33.995Z",
+        "date_modified": "2019-06-21T16:57:20.573Z",
+        "tags": [
+            1
+        ],
+        "collections": [
+            2
+        ],
+        "related": [
+            7
+        ],
+        "topics": []
+    }
+},
+{
+    "model": "nodes.node",
+    "pk": 7,
+    "fields": {
+        "user": 1,
+        "uuid": "3faa376f-a50f-4e38-973e-a2923d5a35d9",
+        "text": "",
+        "file": "user_1/DINRoundProLight-InfoGuide.pdf",
+        "source": null,
+        "notes": "",
+        "origin": null,
+        "in_trash": false,
+        "is_starred": false,
+        "count_seen": 0,
+        "count_query": 0,
+        "date_created": "2019-06-21T15:37:50.849Z",
+        "date_modified": "2019-06-21T16:28:17.978Z",
+        "tags": [],
+        "collections": [],
+        "related": [
+            6
+        ],
+        "topics": []
+    }
+},
+{
+    "model": "nodes.node",
+    "pk": 8,
+    "fields": {
+        "user": 1,
+        "uuid": "44a2d9c6-9c3a-4844-8522-b389b4ffcbbe",
+        "text": "",
+        "file": "user_1/PragmataPro_Haskell.png",
+        "source": null,
+        "notes": "",
+        "origin": 1,
+        "in_trash": false,
+        "is_starred": false,
+        "count_seen": 0,
+        "count_query": 0,
+        "date_created": "2019-06-21T15:38:24.285Z",
+        "date_modified": "2019-06-21T16:29:36.687Z",
+        "tags": [
+            2,
+            3
+        ],
+        "collections": [
+            1
+        ],
+        "related": [
+            3,
+            4
+        ],
+        "topics": []
+    }
+}
+]

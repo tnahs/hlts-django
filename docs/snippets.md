@@ -9,12 +9,11 @@ heroku run <command> --settings=config.settings.production
 python manage.py dumpdata \
     --exclude admin \
     --exclude auth \
-    --exclude users \
     --exclude sessions \
     --exclude contenttypes \
     --settings=config.settings.development \
     --indent 4 \
-    > tmp/db.json
+    > tmp/dev_data.json
 
 python manage.py dumpdata \
     users \

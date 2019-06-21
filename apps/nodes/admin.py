@@ -104,7 +104,7 @@ class NodeAdmin(ModelAdminUserMixin, admin.ModelAdmin):
         (
             "Node", {
                 "fields": (
-                    "uuid", "body", "file", "source", "notes", "tags",
+                    "uuid", "text", "file", "source", "notes", "tags",
                     "collections", "origin", "is_starred", "in_trash",
                     "related"
                 ),

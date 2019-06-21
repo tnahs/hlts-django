@@ -21,6 +21,9 @@ class NodeAttribute(models.Model):
     date_created = models.DateTimeField(auto_now_add=True)
     date_modified = models.DateTimeField(auto_now=True)
 
+    def __str__(self):
+        return self.__repr__()
+
 
 class Origin(NodeAttribute):
 
@@ -38,9 +41,6 @@ class Origin(NodeAttribute):
     # Read-only
     date_created = models.DateTimeField(auto_now_add=True)
     date_modified = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return self.name
 
     def __repr__(self):
         return f"<{self.__class__.__name__}:{self.name}>"
@@ -68,11 +68,8 @@ class Individual(NodeAttribute):
     date_created = models.DateTimeField(auto_now_add=True)
     date_modified = models.DateTimeField(auto_now=True)
 
-    def __str__(self):
-        return self.name
-
     def __repr__(self):
-        return f"<{self.__class__.__name__}:{self.name}>"
+        return f"<{self.__class__.__name__}:{self.full_name}>"
 
     @property
     def full_name(self):
@@ -135,22 +132,17 @@ class Source(NodeAttribute):
 
     objects = SourceManager()
 
-    def __str__(self):
-
-        if not self.individuals:
-            return self.name
-
-        if not self.name:
-            return self.by
-
-        return f"{self.name} - {self.by}"
-
     def __repr__(self):
-        return f"<{self.__class__.__name__}:{self.__str__()}>"
+        return f"<{self.__class__.__name__}:{self.name}{self.by}>"
+
+    def full_name(self):
+        return f"{self.name} - {self.by}"
 
     @property
     def by(self):
-        return ", ".join([i.name for i in self.individuals.all()])
+        if self.individuals:
+            individuals = ", ".join([i.__repr__() for i in self.individuals.all()])
+            return f" - [{individuals}]"
 
     # NOTE: Field validation has be done at the form/serializer level because
     # of the way Django handles many-to-many relationships. Primary keys are
@@ -227,9 +219,6 @@ class Tag(NodeAttribute):
     date_created = models.DateTimeField(auto_now_add=True)
     date_modified = models.DateTimeField(auto_now=True)
 
-    def __str__(self):
-        return self.name
-
     def __repr__(self):
         return f"<{self.__class__.__name__}:{self.name}>"
 
@@ -246,13 +235,12 @@ class Collection(NodeAttribute):
 
     # Collection
     name = models.CharField(max_length=64)
+    color = models.CharField(max_length=32)
+    description = models.TextField()
 
     # Read-only
     date_created = models.DateTimeField(auto_now_add=True)
     date_modified = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return self.name
 
     def __repr__(self):
         return f"<{self.__class__.__name__}:{self.name}>"
@@ -275,25 +263,16 @@ class Topic(NodeAttribute):
     date_created = models.DateTimeField(auto_now_add=True)
     date_modified = models.DateTimeField(auto_now=True)
 
-    def __str__(self):
-        return self.name
-
     def __repr__(self):
         return f"<{self.__class__.__name__}:{self.name}>"
 
 
 """ Nodes """
 
-"""
-class BaseNode():
 
-    # TODO: Whats the best way to creat a connection between nodes?
-
-
-    # QUESTION: Is there any way to have this display the node type?
-    def __str__(self):
-        return self.__class__.__name__
-"""
+def dir_user_files(instance, filename):
+    # MEDIA_ROOT/user_<pk>/<filename>
+    return instance.user.dir_media / filename
 
 
 class Node(models.Model):
@@ -307,8 +286,14 @@ class Node(models.Model):
 
     uuid = models.UUIDField(default=uuid.uuid4, unique=True)
 
-    body = models.TextField()
-    file = models.FileField(upload_to="files", blank=True)
+    # TODO: Validate that either text or file has a value. Add this validation
+    # in the model...
+    text = models.TextField(blank=True)
+
+    # TODO: Have this dynamically find out file type. Only accept supported
+    # file formats. Then mark the Node as a certain "type".
+    # TODO: Send the file to MEDIA_ROOT/user_<pk>/images/<filename>
+    file = models.FileField(upload_to=dir_user_files, blank=True)
 
     source = models.ForeignKey(Source,
                                on_delete=models.CASCADE,
@@ -334,58 +319,21 @@ class Node(models.Model):
     date_created = models.DateTimeField(auto_now_add=True)
     date_modified = models.DateTimeField(auto_now=True)
 
-    @staticmethod
-    def dir_images(instance, filename):
-        # MEDIA_ROOT/user_<pk>/images/<filename>
-        return instance.user.dir_images / filename
-
     def __str__(self):
-        return f"{self.body[:64]}..."
+        return self.__repr__()
 
     def __repr__(self):
-        return f"<{self.__class__.__name__}:{self.uuid}>"
 
+        rep = ""
 
-# class Text(Node):
+        if self.file and self.text:
+            rep = f"text:{self.text[:32].strip()}... file:{self.file.url}"
+        elif self.file:
+            rep = f"file:{self.file.url}"
+        elif self.text:
+            rep = f"text:{self.text[:64].strip()}..."
 
-#     class Meta:
-#         verbose_name = "Node Text"
-#         unique_together = ["user", "uuid"]
-
-#     user = models.ForeignKey(get_user_model(),
-#                              related_name="texts",
-#                              on_delete=models.CASCADE)
-
-#     # Text
-#     uuid = models.UUIDField(default=uuid.uuid4, unique=True)
-#     body = models.TextField()
-
-#     def __str__(self):
-#         return f"{self.body[:64]}..."
-
-#     def __repr__(self):
-#         return f"<{self.__class__.__name__}:{self.uuid}>"
-
-
-# class Image(Node):
-
-#     class Meta:
-#         verbose_name = "Node Image"
-
-#     user = models.ForeignKey(get_user_model(),
-#                             related_name="images",
-#                             on_delete=models.CASCADE)
-
-#     # Image
-#     file = models.ImageField(upload_to=Node.dir_images)
-#     name = models.CharField(max_length=128, blank=True)
-#     description = models.TextField(blank=True)
-
-#     def __str__(self):
-#         return self.file.url
-
-#     def __repr__(self):
-#         return f"<{self.__class__.__name__}:{self.file.url}>"
+        return f"<{self.__class__.__name__}:{rep}>"
 
 
 User = get_user_model()
