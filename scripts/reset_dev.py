@@ -68,17 +68,32 @@ def main():
     except Exception:
         raise
 
-    os.system(f"python manage.py collectstatic --settings=config.settings.development --no-input")
-    os.system(f"python manage.py makemigrations --settings=config.settings.development")
-    os.system(f"python manage.py migrate --settings=config.settings.development")
+    os.system(
+        f"python manage.py collectstatic \
+        --settings=config.settings.development --no-input"
+    )
+    os.system(
+        f"python manage.py makemigrations \
+        --settings=config.settings.development"
+    )
+    os.system(
+        f"python manage.py migrate \
+        --settings=config.settings.development"
+    )
 
     for item in fixtures_dir.iterdir():
         if item.is_file() and item.suffix == ".json":
-            os.system(f"python manage.py loaddata {item} --settings=config.settings.development")
+            os.system(
+                f"python manage.py loaddata {item} \
+                    --settings=config.settings.development"
+            )
 
     print(f"{APP_NAME} successfully reset!")
 
-    os.system(f"python manage.py runserver --settings=config.settings.development")
+    # os.system(
+    #     f"python manage.py runserver \
+    # --settings=config.settings.development"
+    # )
 
 
 if __name__ == "__main__":

@@ -7,7 +7,6 @@ from .models import Node
 
 @pytest.mark.django_db
 class TestNodeModel:
-
     def _load_dev_fixtures(self):
         call_command("loaddata", "fixtures/dev_db.json")
 

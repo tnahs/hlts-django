@@ -8,15 +8,9 @@ from django.contrib.auth.models import AbstractUser
 class User(AbstractUser):
     """ via.https://testdriven.io/blog/django-custom-user-model/ """
 
-    THEME_CHOICES = [
-        (0, "Default"),
-        (1, "Dark"),
-    ]
+    THEME_CHOICES = [(0, "Default"), (1, "Dark")]
 
-    theme = models. IntegerField(
-        choices=THEME_CHOICES,
-        default=0
-    )
+    theme = models.IntegerField(choices=THEME_CHOICES, default=0)
 
     @property
     def dir_media(self):
@@ -31,13 +25,13 @@ class User(AbstractUser):
 
 class Notification(models.Model):
 
-    user = models.ForeignKey(get_user_model(),
-                            related_name="notifications",
-                            on_delete=models.CASCADE)
+    user = models.ForeignKey(
+        get_user_model(), related_name="notifications", on_delete=models.CASCADE
+    )
 
 
 class Task(models.Model):
 
-    user = models.ForeignKey(get_user_model(),
-                            related_name="tasks",
-                            on_delete=models.CASCADE)
+    user = models.ForeignKey(
+        get_user_model(), related_name="tasks", on_delete=models.CASCADE
+    )

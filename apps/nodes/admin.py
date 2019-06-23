@@ -25,8 +25,8 @@ class ModelAdminUserMixin:
 @admin.register(Origin)
 class OriginAdmin(ModelAdminUserMixin, admin.ModelAdmin):
 
-    readonly_fields = ("user", )
-    search_fields = ("name", )
+    readonly_fields = ("user",)
+    search_fields = ("name",)
 
 
 @admin.register(Individual)
@@ -37,13 +37,12 @@ class IndividualAdmin(ModelAdminUserMixin, admin.ModelAdmin):
     # run the unique-together validation method. This also applies to any other
     # fields with the same basic configuration.
 
-    readonly_fields = ("user", )
-    filter_horizontal = ("aka", )
-    search_fields = ("name", )
+    readonly_fields = ("user",)
+    filter_horizontal = ("aka",)
+    search_fields = ("name",)
 
 
 class SourceAdminForm(forms.ModelForm):
-
     def clean(self):
         """ See Source model in nodes.models for notes. """
 
@@ -59,9 +58,7 @@ class SourceAdminForm(forms.ModelForm):
             self.add_error("individuals", error)
 
         try:
-            Source.validate_unique_together(
-                self.user, name, individuals, source_pk=pk
-            )
+            Source.validate_unique_together(self.user, name, individuals, source_pk=pk)
         except ValidationError as error:
             raise forms.ValidationError(error.message)
 
@@ -73,21 +70,21 @@ class SourceAdmin(ModelAdminUserMixin, admin.ModelAdmin):
 
     form = SourceAdminForm
 
-    readonly_fields = ("user", )
-    filter_horizontal = ("individuals", )
-    search_fields = ("name", )
+    readonly_fields = ("user",)
+    filter_horizontal = ("individuals",)
+    search_fields = ("name",)
 
 
 @admin.register(Tag)
 class TagAdmin(ModelAdminUserMixin, admin.ModelAdmin):
 
-    readonly_fields = ("user", )
+    readonly_fields = ("user",)
 
 
 @admin.register(Collection)
 class CollectionAdmin(ModelAdminUserMixin, admin.ModelAdmin):
 
-    readonly_fields = ("user", )
+    readonly_fields = ("user",)
 
 
 @admin.register(Node)
@@ -97,25 +94,41 @@ class NodeAdmin(ModelAdminUserMixin, admin.ModelAdmin):
     filter_horizontal = ("tags", "collections")
     autocomplete_fields = ("origin", "source")
     readonly_fields = (
-        "user", "date_created", "date_modified", "topics", "count_seen",
-        "count_query"
+        "user",
+        "date_created",
+        "date_modified",
+        "topics",
+        "related_auto",
     )
     fieldsets = (
         (
-            "Node", {
+            "Node",
+            {
                 "fields": (
-                    "uuid", "text", "file", "source", "notes", "tags",
-                    "collections", "origin", "is_starred", "in_trash",
-                    "related"
-                ),
+                    "uuid",
+                    "text",
+                    "file",
+                    "source",
+                    "notes",
+                    "tags",
+                    "collections",
+                    "origin",
+                    "is_starred",
+                    "in_trash",
+                    "related",
+                )
             },
         ),
         (
-            "Read-only", {
+            "Read-only",
+            {
                 "fields": (
-                    "user", "date_created", "date_modified", "topics",
-                    "count_seen", "count_query"
-                ),
+                    "user",
+                    "date_created",
+                    "date_modified",
+                    "topics",
+                    "related_auto",
+                )
             },
         ),
     )

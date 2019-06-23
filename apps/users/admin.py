@@ -13,19 +13,9 @@ class UserAdminExtended(UserAdmin):
     add_form = UserCreationFormExtended
 
     list_display = ("username", "email")
-    fieldsets = UserAdmin.fieldsets + (
-        (
-            None, {
-                "fields": ("theme", )
-            }
-        ),
-    )
+    fieldsets = UserAdmin.fieldsets + ((None, {"fields": ("theme",)}),)
     add_fieldsets = UserAdmin.add_fieldsets + (
-        (
-            "Permissions", {
-                "fields": ("is_staff", "is_active")
-            }
-        ),
+        ("Permissions", {"fields": ("is_staff", "is_active")}),
     )
 
 

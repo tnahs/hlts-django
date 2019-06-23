@@ -1,148 +1,112 @@
-
 import uuid
 from typing import List, Union
 
 from django.db import models
 from django.contrib.auth import get_user_model
-from django.db.models.signals import post_save
 from django.core.exceptions import ValidationError
-from django.dispatch import receiver
+from django.utils import timezone
 
 
-""" Node Data """
-
-
-class NodeAttribute(models.Model):
-
+class CommonDataMixin(models.Model):
     class Meta:
         abstract = True
 
-    # Read-only
-    date_created = models.DateTimeField(auto_now_add=True)
-    date_modified = models.DateTimeField(auto_now=True)
+    # TODO: Add a method to stamp the time when a node is modified.
+    date_created = models.DateTimeField(default=timezone.now)
+    date_modified = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
         return self.__repr__()
 
 
-class Origin(NodeAttribute):
+class Individual(CommonDataMixin, models.Model):
+    """ Individual.aka handles name variants i.e. 'John Dough', 'J. Dough'
+    and 'Dough, John J.' would be considered the same individual. """
 
     class Meta:
-        verbose_name = "NodeAttribute Origin"
-        unique_together = ("user", "name")
+        unique_together = ["user", "name"]
 
-    user = models.ForeignKey(get_user_model(),
-                            related_name="origins",
-                            on_delete=models.CASCADE)
+    user = models.ForeignKey(
+        get_user_model(), related_name="individuals", on_delete=models.CASCADE
+    )
 
-    # Origin
-    name = models.CharField(max_length=128)
-
-    # Read-only
-    date_created = models.DateTimeField(auto_now_add=True)
-    date_modified = models.DateTimeField(auto_now=True)
-
-    def __repr__(self):
-        return f"<{self.__class__.__name__}:{self.name}>"
-
-
-class Individual(NodeAttribute):
-    """ Individual.aka handles those with name variants i.e. 'John Dough',
-    'J. Dough' and 'Dough, John J.' would be considered the same individual. """
-
-    class Meta:
-        verbose_name = "NodeAttribute Individual"
-        unique_together = ("user", "name")
-
-    user = models.ForeignKey(get_user_model(),
-                             related_name="individuals",
-                             on_delete=models.CASCADE)
-
-    # Individual
     name = models.CharField(max_length=256)
     first_name = models.CharField(max_length=256, blank=True)
     last_name = models.CharField(max_length=256, blank=True)
     aka = models.ManyToManyField("self", blank=True)
 
-    # Read-only
-    date_created = models.DateTimeField(auto_now_add=True)
-    date_modified = models.DateTimeField(auto_now=True)
-
     def __repr__(self):
-        return f"<{self.__class__.__name__}:{self.full_name}>"
+        return f"<{self.__class__.__name__}:{self.display_name}>"
 
     @property
-    def full_name(self):
+    def display_name(self):
         if self.first_name and self.last_name:
             return f"{self.first_name} {self.last_name}"
         return self.name
 
 
 class SourceManager(models.Manager):
-
     def get_queryset(self):
         return super().get_queryset()
 
-    def get_or_create(self, user, name: str,
-                      individuals: List[Union[int, Individual, str]]):
+    def get_or_create(
+        self, user, name: str, individuals: List[Union[int, Individual, str]]
+    ):
 
-        # TODO: Document this.
+        # TODO: Add documentation.
 
-        sources = self.get_queryset().filter(name=name, user=user)
+        sources = (
+            self.get_queryset()
+            .filter(name=name, user=user)
+            .annotate(count=models.Count("individuals"))
+            .filter(count=len(individuals))
+        )
 
-        # TODO: Add that query method that culled itself by the number of items
-        # in the m2m relationship.
+        if sources:
 
-        if not sources:
-            return self.get_queryset().create(name=name, user=user)
+            new_pks = Source.get_individuals_pks(user, individuals)
 
-        new_pks = Source.get_individuals_pks(user, individuals)
+            for source in sources:
+                source_pks = {i.pk for i in source.individuals.all()}
+                if source_pks == new_pks:
+                    return sources
 
-        for source in sources:
-            source_pks = {i.pk for i in source.individuals.all()}
-            if source_pks == new_pks:
-                return source
+        individuals = Source.get_or_create_individuals(user, individuals)
 
-        return self.get_queryset().create(name=name, user=user)
+        source = self.get_queryset().create(name=name, user=user)
+
+        source.individuals.set(individuals)
+        source.save()
+
+        return source
 
 
-class Source(NodeAttribute):
-    """ A Source may have multiple individuals. But two sources cannot
-    have same set of multiple individuals. This is enforced using a signal
-    receiver verify_source_individuals_is_unique() below. """
+class Source(CommonDataMixin, models.Model):
 
-    class Meta:
-        verbose_name = "NodeAttribute Source"
+    user = models.ForeignKey(
+        get_user_model(), related_name="sources", on_delete=models.CASCADE
+    )
 
-    user = models.ForeignKey(get_user_model(),
-                            related_name="sources",
-                            on_delete=models.CASCADE)
-
-    # Source
     name = models.CharField(max_length=256, blank=True)
-    individuals = models.ManyToManyField(Individual,
-                                         blank=True)
+    individuals = models.ManyToManyField(Individual, blank=True)
     url = models.URLField(max_length=256, blank=True)
-    date = models.DateTimeField(null=True, blank=True)
+    date = models.DateField(null=True, blank=True)
     notes = models.TextField(blank=True)
-
-    # Read-only
-    date_created = models.DateTimeField(auto_now_add=True)
-    date_modified = models.DateTimeField(auto_now=True)
 
     objects = SourceManager()
 
     def __repr__(self):
         return f"<{self.__class__.__name__}:{self.name}{self.by}>"
 
-    def full_name(self):
-        return f"{self.name} - {self.by}"
+    @property
+    def display_name(self):
+        return f"{self.name}{self.by}"
 
     @property
     def by(self):
         if self.individuals:
-            individuals = ", ".join([i.__repr__() for i in self.individuals.all()])
-            return f" - [{individuals}]"
+            individuals = ", ".join([i.display_name for i in self.individuals.all()])
+            return f" - {individuals}"
 
     # NOTE: Field validation has be done at the form/serializer level because
     # of the way Django handles many-to-many relationships. Primary keys are
@@ -151,18 +115,27 @@ class Source(NodeAttribute):
     # validation methods **must** be called before any database transaction.
 
     @staticmethod
-    def validate_unique_together(user, name: str,
-                                 individuals: List[Union[int, Individual, str]],
-                                 source_pk: int = None):
-        # TODO: Document this.
+    def validate_unique_together(
+        user,
+        name: str,
+        individuals: List[Union[int, Individual, str]],
+        source_pk: int = None,
+    ):
+        """ A Source may have multiple individuals. But two sources cannot have
+        the same set of individuals."""
+
+        # TODO: Add documentation.
 
         sources = Source.objects.filter(name=name, user=user)
 
-        # TODO: Add that query method that culled itself by the number of items
-        # in the m2m relationship.
-
         if source_pk:
             sources = sources.exclude(pk=source_pk)
+
+        sources = (
+            sources.filter(name=name, user=user)
+            .annotate(count=models.Count("individuals"))
+            .filter(count=len(individuals))
+        )
 
         if not sources:
             return
@@ -173,12 +146,16 @@ class Source(NodeAttribute):
             source_pks = {i.pk for i in source.individuals.all()}
             if source_pks == new_pks:
                 raise ValidationError(
-                    f"Source '{name}' with selected individuals already exists.")
+                    f"Source '{name}' with selected individuals already exists."
+                )
 
     @staticmethod
     def get_individuals_pks(user, individuals: List[Union[int, Individual, str]]):
 
-        # TODO: Document this.
+        # TODO: Add documentation.
+
+        if not isinstance(individuals, list):
+            raise TypeError(f"Argument 'individuals' must be of type list.")
 
         if not individuals:
             return []
@@ -193,75 +170,98 @@ class Source(NodeAttribute):
                 try:
                     obj = Individual.objects.get(name=name, user=user)
                 except Individual.DoesNotExist:
-                    pks.add(None)
-                else:
-                    pks.add(obj.pk)
+                    obj = None
+                pks.add(obj.pk)
             return pks
         else:
-            raise TypeError(f"Unrecognized type {type(individuals[0])} in "
-                            f"{individuals}.")
+            raise TypeError(
+                f"Unrecognized type {type(individuals[0])} in {individuals}."
+            )
+
+    @staticmethod
+    def get_or_create_individuals(user, individuals: List[Union[int, Individual, str]]):
+
+        # TODO: Add documentation.
+
+        if not isinstance(individuals, list):
+            raise TypeError(f"Argument 'individuals' must be of type list.")
+
+        if not individuals:
+            return []
+
+        if isinstance(individuals[0], Individual):
+            [i.save() for i in individuals]
+            return individuals
+        elif isinstance(individuals[0], int):
+            return [Individual.objects.get(pk=pk, user=user) for pk in individuals]
+        elif isinstance(individuals[0], str):
+            objs = []
+            for name in individuals:
+                try:
+                    obj = Individual.objects.get(name=name, user=user)
+                except Individual.DoesNotExist:
+                    obj = Individual.objects.create(name=name, user=user)
+                objs.add(obj)
+            return objs
+        else:
+            raise TypeError(
+                f"Unrecognized type {type(individuals[0])} in {individuals}."
+            )
 
 
-class Tag(NodeAttribute):
-
+class Tag(CommonDataMixin, models.Model):
     class Meta:
-        verbose_name = "NodeAttribute Tag"
-        unique_together = ("user", "name")
+        unique_together = ["user", "name"]
 
-    user = models.ForeignKey(get_user_model(),
-                            related_name="tags",
-                            on_delete=models.CASCADE)
+    user = models.ForeignKey(
+        get_user_model(), related_name="tags", on_delete=models.CASCADE
+    )
 
-    # Tag
     name = models.CharField(max_length=64)
-
-    # Read-only
-    date_created = models.DateTimeField(auto_now_add=True)
-    date_modified = models.DateTimeField(auto_now=True)
 
     def __repr__(self):
         return f"<{self.__class__.__name__}:{self.name}>"
 
 
-class Collection(NodeAttribute):
-
+class Collection(CommonDataMixin, models.Model):
     class Meta:
-        verbose_name = "NodeAttribute Collection"
-        unique_together = ("user", "name")
+        unique_together = ["user", "name"]
 
-    user = models.ForeignKey(get_user_model(),
-                             related_name="collections",
-                             on_delete=models.CASCADE)
+    user = models.ForeignKey(
+        get_user_model(), related_name="collections", on_delete=models.CASCADE
+    )
 
-    # Collection
     name = models.CharField(max_length=64)
     color = models.CharField(max_length=32)
     description = models.TextField()
 
-    # Read-only
-    date_created = models.DateTimeField(auto_now_add=True)
-    date_modified = models.DateTimeField(auto_now=True)
+    def __repr__(self):
+        return f"<{self.__class__.__name__}:{self.name}>"
+
+
+class Origin(CommonDataMixin, models.Model):
+    class Meta:
+        unique_together = ["user", "name"]
+
+    user = models.ForeignKey(
+        get_user_model(), related_name="origins", on_delete=models.CASCADE
+    )
+
+    name = models.CharField(max_length=128)
 
     def __repr__(self):
         return f"<{self.__class__.__name__}:{self.name}>"
 
 
-class Topic(NodeAttribute):
-
+class Topic(CommonDataMixin, models.Model):
     class Meta:
-        verbose_name = "NodeAttribute Topic"
-        unique_together = ("user", "name")
+        unique_together = ["user", "name"]
 
-    user = models.ForeignKey(get_user_model(),
-                             related_name="topics",
-                             on_delete=models.CASCADE)
+    user = models.ForeignKey(
+        get_user_model(), related_name="topics", on_delete=models.CASCADE
+    )
 
-    # Topic
     name = models.CharField(max_length=64)
-
-    # Read-only
-    date_created = models.DateTimeField(auto_now_add=True)
-    date_modified = models.DateTimeField(auto_now=True)
 
     def __repr__(self):
         return f"<{self.__class__.__name__}:{self.name}>"
@@ -271,42 +271,34 @@ class Topic(NodeAttribute):
 
 
 def dir_user_files(instance, filename):
+    # TODO Is there a cleaner way to do this?
     # MEDIA_ROOT/user_<pk>/<filename>
     return instance.user.dir_media / filename
 
 
-class Node(models.Model):
-
+class Node(CommonDataMixin, models.Model):
     class Meta:
         unique_together = ["user", "uuid"]
 
-    user = models.ForeignKey(get_user_model(),
-                             related_name="nodes",
-                             on_delete=models.CASCADE)
+    user = models.ForeignKey(
+        get_user_model(), related_name="nodes", on_delete=models.CASCADE
+    )
 
     uuid = models.UUIDField(default=uuid.uuid4, unique=True)
 
-    # TODO: Validate that either text or file has a value. Add this validation
-    # in the model...
+    # TODO: Validate that either text or file has a value.
     text = models.TextField(blank=True)
-
     # TODO: Have this dynamically find out file type. Only accept supported
-    # file formats. Then mark the Node as a certain "type".
-    # TODO: Send the file to MEDIA_ROOT/user_<pk>/images/<filename>
+    # file formats. Send the file to MEDIA_ROOT/user_<pk>/images/<filename>
+    # Then mark the Node as a certain "type".
     file = models.FileField(upload_to=dir_user_files, blank=True)
 
-    source = models.ForeignKey(Source,
-                               on_delete=models.CASCADE,
-                               null=True,
-                               blank=True)
+    source = models.ForeignKey(Source, on_delete=models.CASCADE, null=True, blank=True)
     notes = models.TextField(blank=True)
     tags = models.ManyToManyField(Tag, blank=True)
     collections = models.ManyToManyField(Collection, blank=True)
 
-    origin = models.ForeignKey(Origin,
-                               on_delete=models.CASCADE,
-                               null=True,
-                               blank=True)
+    origin = models.ForeignKey(Origin, on_delete=models.CASCADE, null=True, blank=True)
     in_trash = models.BooleanField(default=False)
     is_starred = models.BooleanField(default=False)
 
@@ -314,47 +306,17 @@ class Node(models.Model):
 
     # Read-only
     topics = models.ManyToManyField(Topic, blank=True)
-    count_seen = models.IntegerField(default=0)
-    count_query = models.IntegerField(default=0)
-    date_created = models.DateTimeField(auto_now_add=True)
-    date_modified = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return self.__repr__()
+    related_auto = models.ManyToManyField("self", blank=True)
 
     def __repr__(self):
 
-        rep = ""
+        name = []
 
-        if self.file and self.text:
-            rep = f"text:{self.text[:32].strip()}... file:{self.file.url}"
-        elif self.file:
-            rep = f"file:{self.file.url}"
-        elif self.text:
-            rep = f"text:{self.text[:64].strip()}..."
+        if self.text:
+            name.append(f"{self.text[:64].strip()}")
+        if self.file:
+            name.append(f"{self.file.name}")
 
-        return f"<{self.__class__.__name__}:{rep}>"
+        name = ":".join(name)
 
-
-User = get_user_model()
-
-
-@receiver(post_save, sender=User)
-def init_new_user(instance: User, created: bool, raw: bool, **kwargs):
-    """
-    Create default objects for new users.
-
-    via https://docs.djangoproject.com/en/2.2/ref/signals/
-    via https://stackoverflow.com/a/19427227
-
-    created: True if a new record was created.
-    raw: True if the model is saved exactly as presented i.e. when loading a
-    fixture. One should not query/modify other records in the database as the
-    database might not be in a consistent state yet.
-    """
-
-    if not created or raw:
-        return
-
-    origin = Origin.objects.create(name="app", user=instance)
-    origin.save()
+        return f"<{self.__class__.__name__}:{name}>"

@@ -1,4 +1,3 @@
-
 import os
 import pathlib
 
@@ -12,9 +11,7 @@ STATIC_URL = "/static/"
 MEDIA_ROOT = SITE_ROOT / "media"
 MEDIA_URL = "/media/"
 
-FIXTURE_DIRS = [
-    SITE_ROOT / "fixtures",
-]
+FIXTURE_DIRS = [SITE_ROOT / "fixtures"]
 
 WSGI_APPLICATION = "config.wsgi.application"
 ROOT_URLCONF = "config.urls"
@@ -30,12 +27,10 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-
     # local apps
     "apps.api.apps.ApiConfig",
     "apps.users.apps.UsersConfig",
     "apps.nodes.apps.NodesConfig",
-
     # installed apps
     "rest_framework",
 ]
@@ -56,16 +51,16 @@ TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         "APP_DIRS": True,
-        "DIRS": [SITE_ROOT / "templates", ],
+        "DIRS": [SITE_ROOT / "templates"],
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.debug",
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-            ],
+            ]
         },
-    },
+    }
 ]
 
 LANGUAGE_CODE = "en-us"
@@ -75,9 +70,7 @@ USE_L10N = True
 USE_TZ = True
 
 REST_FRAMEWORK = {
-    "DEFAULT_PERMISSION_CLASSES": (
-        "rest_framework.permissions.IsAuthenticated",
-    ),
+    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     # "DEFAULT_RENDERER_CLASSES": (
     #     "rest_framework.renderers.JSONRenderer",
     # ),
