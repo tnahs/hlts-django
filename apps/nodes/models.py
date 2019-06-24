@@ -1,10 +1,17 @@
 import uuid
+import pathlib
 from typing import List, Union
 
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+
+
+VALID_IMAGE_TYPES = [".jpg", ".png", ".gif"]
+VALID_AUDIO_TYPES = [".mp3", ".aiff"]
+VALID_VIDEO_TYPES = [".mp4"]
+VALID_DOCUMENT_TYPES = [".pdf", ".txt", ".md"]
 
 
 class CommonDataMixin(models.Model):
@@ -63,18 +70,15 @@ class SourceManager(models.Manager):
         )
 
         if sources:
-
             new_pks = Source.get_individuals_pks(user, individuals)
-
             for source in sources:
                 source_pks = {i.pk for i in source.individuals.all()}
                 if source_pks == new_pks:
-                    return sources
+                    return source
 
         individuals = Source.get_or_create_individuals(user, individuals)
 
         source = self.get_queryset().create(name=name, user=user)
-
         source.individuals.set(individuals)
         source.save()
 
@@ -253,27 +257,26 @@ class Origin(CommonDataMixin, models.Model):
         return f"<{self.__class__.__name__}:{self.name}>"
 
 
-class Topic(CommonDataMixin, models.Model):
-    class Meta:
-        unique_together = ["user", "name"]
-
-    user = models.ForeignKey(
-        get_user_model(), related_name="topics", on_delete=models.CASCADE
-    )
-
-    name = models.CharField(max_length=64)
-
-    def __repr__(self):
-        return f"<{self.__class__.__name__}:{self.name}>"
-
-
 """ Nodes """
 
 
-def dir_user_files(instance, filename):
-    # TODO Is there a cleaner way to do this?
-    # MEDIA_ROOT/user_<pk>/<filename>
-    return instance.user.dir_media / filename
+def media_manager(instance, filename):
+    """ See apps.users.models.User """
+
+    user = instance.user
+
+    filetype = pathlib.Path(filename).suffix
+
+    if filetype in VALID_IMAGE_TYPES:
+        return user.dir_images / filename
+    elif filetype in VALID_AUDIO_TYPES:
+        return user.dir_audios / filename
+    elif filetype in VALID_VIDEO_TYPES:
+        return user.dir_videos / filename
+    elif filetype in VALID_DOCUMENT_TYPES:
+        return user.dir_documents / filename
+    else:
+        return user.dir_misc / filename
 
 
 class Node(CommonDataMixin, models.Model):
@@ -286,12 +289,12 @@ class Node(CommonDataMixin, models.Model):
 
     uuid = models.UUIDField(default=uuid.uuid4, unique=True)
 
-    # TODO: Validate that either text or file has a value.
+    # TODO: Validate that either text or media has a value.
     text = models.TextField(blank=True)
-    # TODO: Have this dynamically find out file type. Only accept supported
-    # file formats. Send the file to MEDIA_ROOT/user_<pk>/images/<filename>
+    # TODO: Have this dynamically find out media type. Only accept supported
+    # media formats. Send the media to MEDIA_ROOT/user_<pk>/images/<filename>
     # Then mark the Node as a certain "type".
-    file = models.FileField(upload_to=dir_user_files, blank=True)
+    media = models.FileField(upload_to=media_manager, blank=True)
 
     source = models.ForeignKey(Source, on_delete=models.CASCADE, null=True, blank=True)
     notes = models.TextField(blank=True)
@@ -305,18 +308,24 @@ class Node(CommonDataMixin, models.Model):
     related = models.ManyToManyField("self", blank=True)
 
     # Read-only
-    topics = models.ManyToManyField(Topic, blank=True)
-    related_auto = models.ManyToManyField("self", blank=True)
+    auto_tags = models.ManyToManyField(Tag, blank=True, related_name="auto_tagged")
+    auto_related = models.ManyToManyField(
+        "self", blank=True, related_name="auto_related"
+    )
 
-    def __repr__(self):
+    @property
+    def display_name(self):
 
         name = []
 
         if self.text:
             name.append(f"{self.text[:64].strip()}")
-        if self.file:
-            name.append(f"{self.file.name}")
+        if self.media:
+            name.append(f"{self.media.name}")
 
         name = ":".join(name)
 
-        return f"<{self.__class__.__name__}:{name}>"
+        return name
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__}:{self.display_name}>"

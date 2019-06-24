@@ -1,4 +1,5 @@
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, FieldDoesNotExist
+from django.urls import reverse
 
 from rest_framework import serializers, exceptions
 
@@ -16,25 +17,56 @@ def update_instance(instance, data: dict, attrs: list):
     return instance
 
 
-class UniqueToUserField(serializers.RelatedField):
-    """
-    via https://github.com/encode/django-rest-framework/blob/master/rest_framework/relations.py
-    """
+class NestedRelatedToUserFied(serializers.RelatedField):
+    def __init__(self, *args, **kwargs):
+        """ Creates a field that obeys a unique together constraint between the
+        the `user` field and the `unique_field`.
 
-    def __init__(self, unique_sibling=None, *args, **kwargs):
+        Parameters
+            unique_field:str
+            default:None
+            This field must be the sibling to "user" in the unique_together
+            contraint i.e `unique_together = ["user", unique_field]`
+
+            create_new:bool
+            default:True
+            When performing a create/update on the parent serializer should the
+            field create a new model object if it cannot retrieve one.
+
+            display_as:str ["str", "url"]
+            default:None
+
+            url_view_name:str
+            default:None
+
+            url_lookup_field:str
+            default:None
+
+        """
+        self.unique_field = kwargs.pop("unique_field", None)
+        self.create_new = kwargs.pop("create_new", True)
+        self.display_as = kwargs.pop("display_as", None)
+        self.url_view_name = kwargs.pop("url_view_name", None)
+        self.url_lookup_field = kwargs.pop("url_lookup_field", None)
+
         super().__init__(*args, **kwargs)
 
         self.model = self.queryset.model
 
-        if unique_sibling is None:
-            raise ValueError("UniqueToUserField 'unique_sibling' must be defined.")
+        if self.unique_field is None:
+            raise ValueError("NestedRelatedToUserFied 'unique_field' must be defined.")
 
-        if unique_sibling not in [f.name for f in self.model._meta.get_fields()]:
-            raise AttributeError(
-                "Field {unique_sibling} does not exist in {self.model}."
-            )
+        try:
+            self.model._meta.get_field(self.unique_field)
+        except FieldDoesNotExist:
+            raise
 
-        self.unique_sibling = unique_sibling
+        if self.display_as == "url":
+            if self.url_view_name is None or self.url_lookup_field is None:
+                raise ValueError(
+                    "NestedRelatedToUserFied 'url_view_name' and 'url_lookup_field' "
+                    "must be defined if display_as=True."
+                )
 
     def get_queryset(self):
         request = self.context.get("request")
@@ -42,15 +74,89 @@ class UniqueToUserField(serializers.RelatedField):
 
     def to_internal_value(self, data):
 
-        request = self.context.get("request")
-
         try:
-            return self.get_queryset().get(**{self.unique_sibling: data})
+            return self.get_queryset().get(**{self.unique_field: data})
         except self.model.DoesNotExist:
-            return self.model(user=request.user, **{self.unique_sibling: data})
+
+            if self.create_new:
+                request = self.context.get("request")
+                return self.model(user=request.user, **{self.unique_field: data})
+
+            raise ValidationError(
+                f"Model {self.model.__name__} has no object with {self.unique_field}={data}."
+            )
 
     def to_representation(self, obj):
-        return getattr(obj, self.unique_sibling)
+
+        if self.display_as == "url":
+            request = self.context.get("request")
+            url = reverse(
+                self.url_view_name,
+                kwargs={self.url_lookup_field: getattr(obj, self.url_lookup_field)},
+            )
+            return request.build_absolute_uri(url)
+
+        elif self.display_as == "str":
+            return str(obj)
+
+        return getattr(obj, self.unique_field)
+
+
+# class CustomRelated(serializers.RelatedField):
+#     """ This field only supports getting objects.
+#     """
+
+#     def __init__(self, *args, **kwargs):
+#         self.unique_field = kwargs.pop("unique_field", None)
+#         self.as_str = kwargs.pop("as_str", None)
+#         self.as_hyperlink = kwargs.pop("as_hyperlink", None)
+#         self.view_name = kwargs.pop("view_name", None)
+#         super().__init__(*args, **kwargs)
+
+#         print(self.read_only)
+
+#         self.model = self.queryset.model
+
+#         if self.unique_field is None:
+#             raise ValueError("CustomRelated 'unique_field' must be defined.")
+
+#         if self.unique_field not in [f.name for f in self.model._meta.get_fields()]:
+#             raise AttributeError("Field {unique_field} does not exist in {self.model}.")
+
+#         if self.as_hyperlink and self.as_str:
+#             raise ValueError(
+#                 "CustomRelated 'as_hyperlink' and 'as_str' cannot both be 'True'."
+#             )
+
+#         if self.as_hyperlink:
+#             if self.view_name is None:
+#                 raise ValueError(
+#                     "CustomRelated 'view_name' must be defined if as_hyperlink=True."
+#                 )
+
+#     def get_queryset(self):
+#         request = self.context.get("request")
+#         return self.queryset.filter(user=request.user)
+
+#     def to_internal_value(self, data):
+#         try:
+#             return self.get_queryset().get(**{self.unique_field: data})
+#         except self.model.DoesNotExist:
+#             raise exceptions.ValidationError("NO!!!!!")
+
+#     def to_representation(self, obj):
+
+#         if self.as_hyperlink:
+#             request = self.context.get("request")
+#             # NOTE: This should eventually allow for non-pk urls.
+#             url = reverse(self.view_name, kwargs={"pk": obj.pk})
+#             url = request.build_absolute_uri(url)
+#             return url
+
+#         if self.as_str:
+#             return str(obj)
+
+#         return getattr(obj, self.unique_field)
 
 
 #
@@ -59,8 +165,8 @@ class UniqueToUserField(serializers.RelatedField):
 class SourceSerializer(serializers.Serializer):
 
     name = serializers.CharField(max_length=256, allow_blank=True)
-    individuals = UniqueToUserField(
-        unique_sibling="name",
+    individuals = NestedRelatedToUserFied(
+        unique_field="name",
         many=True,
         allow_null=True,
         queryset=models.Individual.objects.all(),
@@ -69,9 +175,10 @@ class SourceSerializer(serializers.Serializer):
     date = serializers.DateField(allow_null=True)
     notes = serializers.CharField(allow_blank=True)
 
-    _url = serializers.HyperlinkedRelatedField(
-        source="id", read_only=True, view_name="sources-detail"
+    _connections = serializers.HyperlinkedRelatedField(
+        source="node_set", many=True, read_only=True, view_name="node-detail"
     )
+    _url = serializers.HyperlinkedIdentityField(view_name="source-detail")
 
     def validate(self, data):
         """ See Source model in nodes.models for notes. """
@@ -83,12 +190,7 @@ class SourceSerializer(serializers.Serializer):
 
         if not name and not individuals:
             raise exceptions.ValidationError(
-                exceptions._get_error_details(
-                    {
-                        "name": "Either 'name' or 'individuals' must be defined.",
-                        "individuals": "Either 'name' or 'individuals' must be defined.",
-                    }
-                )
+                "Both 'name' and 'individuals' cannot be blank."
             )
 
         try:
@@ -134,14 +236,22 @@ class IndividualSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=256)
     first_name = serializers.CharField(max_length=256, allow_blank=True)
     last_name = serializers.CharField(max_length=256, allow_blank=True)
-    # TODO: Implement a recursive editable field for aka.
-    aka = serializers.HyperlinkedRelatedField(
-        many=True, read_only=True, view_name="individuals-detail"
+
+    aka = NestedRelatedToUserFied(
+        unique_field="name",
+        create_new=False,
+        display_as="url",
+        url_view_name="individual-detail",
+        url_lookup_field="pk",
+        many=True,
+        allow_null=True,
+        queryset=models.Individual.objects.all(),
     )
 
-    _url = serializers.HyperlinkedRelatedField(
-        source="id", read_only=True, view_name="individuals-detail"
+    _connections = serializers.HyperlinkedRelatedField(
+        source="source_set", many=True, read_only=True, view_name="source-detail"
     )
+    _url = serializers.HyperlinkedIdentityField(view_name="individual-detail")
 
     def validate_name(self, name):
 
@@ -187,9 +297,10 @@ class TagSerializer(serializers.Serializer):
 
     name = serializers.CharField(max_length=64)
 
-    _url = serializers.HyperlinkedRelatedField(
-        source="id", read_only=True, view_name="tags-detail"
+    _connections = serializers.HyperlinkedRelatedField(
+        source="node_set", many=True, read_only=True, view_name="node-detail"
     )
+    _url = serializers.HyperlinkedIdentityField(view_name="tag-detail")
 
     def validate_name(self, name):
 
@@ -233,9 +344,10 @@ class CollectionSerializer(serializers.Serializer):
     color = serializers.CharField(allow_blank=True, max_length=32)
     description = serializers.CharField(allow_blank=True)
 
-    _url = serializers.HyperlinkedRelatedField(
-        source="id", read_only=True, view_name="collections-detail"
+    _connections = serializers.HyperlinkedRelatedField(
+        source="node_set", many=True, read_only=True, view_name="node-detail"
     )
+    _url = serializers.HyperlinkedIdentityField(view_name="collection-detail")
 
     def validate_name(self, name):
 
@@ -281,9 +393,10 @@ class OriginSerializer(serializers.Serializer):
 
     name = serializers.CharField(max_length=64)
 
-    _url = serializers.HyperlinkedRelatedField(
-        source="id", read_only=True, view_name="origins-detail"
+    _connections = serializers.HyperlinkedRelatedField(
+        source="node_set", many=True, read_only=True, view_name="node-detail"
     )
+    _url = serializers.HyperlinkedIdentityField(view_name="origin-detail")
 
     def validate_name(self, name):
 
@@ -325,8 +438,8 @@ class OriginSerializer(serializers.Serializer):
 class NestedSourceSerializer(serializers.Serializer):
 
     name = serializers.CharField(max_length=256, allow_blank=True)
-    individuals = UniqueToUserField(
-        unique_sibling="name",
+    individuals = NestedRelatedToUserFied(
+        unique_field="name",
         many=True,
         allow_null=True,
         queryset=models.Individual.objects.all(),
@@ -340,61 +453,59 @@ class NodeSerializer(serializers.Serializer):
     uuid = serializers.UUIDField(allow_null=True)
 
     text = serializers.CharField(allow_blank=True)
-    file = serializers.FileField(allow_null=True)
+    media = serializers.FileField(allow_null=True)
 
     source = NestedSourceSerializer(allow_null=True)
     notes = serializers.CharField(allow_blank=True)
-    tags = UniqueToUserField(
-        unique_sibling="name",
+    tags = NestedRelatedToUserFied(
+        unique_field="name",
         many=True,
         allow_null=True,
         queryset=models.Tag.objects.all(),
     )
-    collections = UniqueToUserField(
-        unique_sibling="name",
+    collections = NestedRelatedToUserFied(
+        unique_field="name",
         many=True,
         allow_null=True,
         queryset=models.Collection.objects.all(),
     )
 
-    origin = UniqueToUserField(
-        unique_sibling="name", allow_null=True, queryset=models.Origin.objects.all()
+    origin = NestedRelatedToUserFied(
+        unique_field="name", allow_null=True, queryset=models.Origin.objects.all()
     )
     in_trash = serializers.BooleanField()
     is_starred = serializers.BooleanField()
 
-    # TODO: Implement a recursive editable field for related.
-    related = serializers.HyperlinkedRelatedField(
-        many=True, read_only=True, view_name="nodes-detail"
+    related = NestedRelatedToUserFied(
+        unique_field="id",
+        create_new=False,
+        display_as="url",
+        url_view_name="node-detail",
+        url_lookup_field="pk",
+        many=True,
+        allow_null=True,
+        queryset=models.Node.objects.all(),
     )
 
-    topics = serializers.StringRelatedField(many=True, read_only=True)
-    related_auto = serializers.HyperlinkedRelatedField(
-        many=True, read_only=True, view_name="nodes-detail"
-    )
-    count_seen = serializers.ReadOnlyField()
-    count_query = serializers.ReadOnlyField()
     date_created = serializers.DateTimeField(allow_null=True)
     date_modified = serializers.DateTimeField(allow_null=True)
 
-    _url = serializers.HyperlinkedRelatedField(
-        source="id", read_only=True, view_name="nodes-detail"
+    auto_tags = serializers.StringRelatedField(many=True, read_only=True)
+    auto_related = serializers.HyperlinkedRelatedField(
+        many=True, read_only=True, view_name="node-detail"
     )
+    count_seen = serializers.ReadOnlyField()
+    count_query = serializers.ReadOnlyField()
+
+    _url = serializers.HyperlinkedIdentityField(view_name="node-detail")
 
     def validate(self, data):
 
         text = data.get("text", None)
-        file = data.get("file", None)
+        media = data.get("media", None)
 
-        if not text and not file:
-            raise exceptions.ValidationError(
-                exceptions._get_error_details(
-                    {
-                        "text": "Either 'text' or 'file' must be defined.",
-                        "file": "Either 'text' or 'file' must be defined.",
-                    }
-                )
-            )
+        if not text and not media:
+            raise exceptions.ValidationError("Both 'text' and 'media' cannot be blank.")
 
         return data
 
@@ -415,6 +526,7 @@ class NodeSerializer(serializers.Serializer):
         collections = validated_data.pop("collections", None)
         tags = validated_data.pop("tags", None)
         origin = validated_data.pop("origin", None)
+        related = validated_data.pop("related", None)
 
         node = models.Node.objects.create(user=request.user, **validated_data)
 
@@ -442,10 +554,65 @@ class NodeSerializer(serializers.Serializer):
             origin.save()
             node.origin = origin
 
+        if related:
+            node.related.set(related)
+
         node.save()
 
         return node
 
     def update(self, instance, validated_data):
-        # TODO: Implement this...
-        return super().update(instance, validated_data)
+
+        request = self.context.get("request")
+
+        source = validated_data.pop("source", None)
+        collections = validated_data.pop("collections", None)
+        tags = validated_data.pop("tags", None)
+        origin = validated_data.pop("origin", None)
+        related = validated_data.pop("related", None)
+
+        if any(source.values()):
+
+            source_name = source.get("name", None)
+            source_individuals = source.get("individuals", None)
+
+            source = models.Source.objects.get_or_create(
+                request.user, source_name, source_individuals
+            )
+            instance.source = source
+
+        if tags:
+            for t in tags:
+                t.save()
+            instance.tags.set(tags)
+
+        if collections:
+            for c in collections:
+                c.save()
+            instance.collections.set(collections)
+
+        if origin:
+            origin.save()
+            instance.origin = origin
+
+        if related:
+            instance.related.set(related)
+
+        update_instance(
+            instance,
+            validated_data,
+            [
+                "uuid",
+                "text",
+                "media",
+                "notes",
+                "in_trash",
+                "is_starred",
+                "date_created",
+                "date_modified",
+            ],
+        )
+
+        instance.save()
+
+        return instance

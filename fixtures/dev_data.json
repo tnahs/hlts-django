@@ -197,7 +197,7 @@
             "user": 1,
             "uuid": "d1c1ece0-19be-45bb-9083-06efd3eaa77f",
             "text": "Sed ac bibendum massa, at ornare urna. Donec in nisl faucibus, tempor magna hendrerit, placerat ligula. Vestibulum et semper lacus. Phasellus pulvinar arcu libero, at placerat sem elementum quis. Suspendisse feugiat, quam in rutrum viverra, tortor mi elementum nibh, et pellentesque orci magna a ex. Proin tincidunt arcu eu fringilla iaculis. Aliquam ante elit, porttitor vitae sapien at, commodo euismod nunc. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum commodo luctus augue ac pretium. Nulla facilisi. Suspendisse lectus massa, viverra eget eros quis, convallis accumsan sapien. Integer quis dui ac ante posuere tincidunt sed vel velit. Aenean scelerisque vestibulum diam, non pharetra dui luctus eget.",
-            "file": "",
+            "media": "",
             "source": 1,
             "notes": "",
             "origin": 1,
@@ -215,7 +215,8 @@
                 3,
                 5
             ],
-            "topics": []
+            "auto_tags": [],
+            "auto_related": []
         }
     },
     {
@@ -225,7 +226,7 @@
             "user": 1,
             "uuid": "ce29ca55-9b7d-4a6a-8cc9-50ec9d31db30",
             "text": "Curabitur ornare nulla lacus, quis volutpat metus posuere a. Nullam condimentum erat nec consectetur posuere. Phasellus et metus pretium, faucibus justo eu, interdum mauris. Vivamus mollis velit nec sem condimentum rhoncus. Sed eros libero, aliquet sed consectetur id, sollicitudin a sem. Nullam lobortis pretium erat eget gravida. Sed id mauris at eros sagittis consequat. Etiam aliquet sapien vitae tellus placerat, a suscipit ante ullamcorper. Phasellus placerat aliquet metus non pellentesque. Praesent turpis nisi, sodales vitae mi dictum, egestas vehicula tellus.",
-            "file": "",
+            "media": "",
             "source": 2,
             "notes": "",
             "origin": 1,
@@ -241,7 +242,8 @@
                 2
             ],
             "related": [],
-            "topics": []
+            "auto_tags": [],
+            "auto_related": []
         }
     },
     {
@@ -251,7 +253,7 @@
             "user": 1,
             "uuid": "69fde879-7fcf-4c21-99ac-065fd8d6a4dd",
             "text": "Integer accumsan, ex vitae eleifend feugiat, lorem justo tristique enim, quis placerat eros dui vel arcu. Duis vitae mauris velit. Vivamus mi ipsum, consequat ut velit at, blandit venenatis leo. Praesent nec dolor laoreet, tempus nunc vel, maximus nibh. Pellentesque augue leo, sollicitudin a malesuada sit amet, congue et neque. Nullam eget augue at orci hendrerit lacinia vel eu mauris. Sed non lorem non ipsum viverra efficitur. Quisque scelerisque justo ut mattis pretium. Integer vel tortor sem. Vivamus malesuada justo justo, et elementum ante bibendum eu. Vivamus iaculis, velit sit amet suscipit viverra, neque justo rutrum nisl, vitae posuere metus erat non quam. Duis blandit eros molestie, gravida ante et, tincidunt velit. Nunc convallis quis dolor id sollicitudin. Proin aliquam gravida tellus id fermentum. Praesent consectetur, velit vitae consectetur accumsan, arcu sem rhoncus est, eu tincidunt leo enim hendrerit lectus.\r\n\r\nUt porta urna eu massa egestas, non sagittis massa bibendum. Nunc id nisi eu sapien cursus dapibus. Morbi id ante lorem. Praesent viverra sapien tempus malesuada malesuada. Maecenas pellentesque leo et sollicitudin pulvinar. Mauris non ornare lectus, et volutpat ante. Aenean dapibus est est, id sagittis erat malesuada ut. Donec elementum dictum posuere. Nullam sollicitudin rhoncus nibh venenatis mollis. Praesent ut venenatis augue. Vivamus interdum porttitor dolor vitae molestie. Aliquam nec leo nec enim porttitor auctor.",
-            "file": "",
+            "media": "",
             "source": 1,
             "notes": "",
             "origin": 1,
@@ -268,7 +270,8 @@
                 4,
                 8
             ],
-            "topics": []
+            "auto_tags": [],
+            "auto_related": []
         }
     },
     {
@@ -278,7 +281,7 @@
             "user": 1,
             "uuid": "7b527ee5-b338-46b8-8a71-b3bd5ad30260",
             "text": "Pellentesque ac leo in massa posuere egestas sed sit amet leo.",
-            "file": "",
+            "media": "",
             "source": 1,
             "notes": "",
             "origin": 1,
@@ -298,7 +301,8 @@
                 3,
                 8
             ],
-            "topics": []
+            "auto_tags": [],
+            "auto_related": []
         }
     },
     {
@@ -308,7 +312,7 @@
             "user": 1,
             "uuid": "911e2a00-eb82-4570-a47b-673df46dbaeb",
             "text": "",
-            "file": "user_1/4.jpg",
+            "media": "user_1/images/4.jpg",
             "source": null,
             "notes": "",
             "origin": 1,
@@ -323,7 +327,8 @@
             "related": [
                 1
             ],
-            "topics": []
+            "auto_tags": [],
+            "auto_related": []
         }
     },
     {
@@ -333,7 +338,7 @@
             "user": 1,
             "uuid": "5abaa3ad-ba3f-4ecd-ac67-65121350a222",
             "text": "Duis mauris magna, sagittis sit amet sem id, pretium gravida metus. Ut maximus felis tempus quam tristique, ac convallis tellus varius. Donec ullamcorper ex nibh. Nullam interdum congue mauris, quis mollis felis lacinia in.",
-            "file": "user_1/bookscanner.gif",
+            "media": "user_1/images/bookscanner.gif",
             "source": 2,
             "notes": "",
             "origin": 1,
@@ -350,7 +355,8 @@
             "related": [
                 7
             ],
-            "topics": []
+            "auto_tags": [],
+            "auto_related": []
         }
     },
     {
@@ -360,7 +366,7 @@
             "user": 1,
             "uuid": "3faa376f-a50f-4e38-973e-a2923d5a35d9",
             "text": "",
-            "file": "user_1/DINRoundProLight-InfoGuide.pdf",
+            "media": "user_1/documents/DINRoundProLight-InfoGuide.pdf",
             "source": null,
             "notes": "",
             "origin": null,
@@ -373,7 +379,8 @@
             "related": [
                 6
             ],
-            "topics": []
+            "auto_tags": [],
+            "auto_related": []
         }
     },
     {
@@ -383,7 +390,7 @@
             "user": 1,
             "uuid": "44a2d9c6-9c3a-4844-8522-b389b4ffcbbe",
             "text": "",
-            "file": "user_1/PragmataPro_Haskell.png",
+            "media": "user_1/images/PragmataPro_Haskell.png",
             "source": null,
             "notes": "",
             "origin": 1,
@@ -402,7 +409,8 @@
                 3,
                 4
             ],
-            "topics": []
+            "auto_tags": [],
+            "auto_related": []
         }
     }
 ]

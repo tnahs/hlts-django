@@ -19,8 +19,23 @@ class User(AbstractUser):
 
     @property
     def dir_images(self):
-        # MEDIA_ROOT/user_<pk>/images/
         return self.dir_media / "images"
+
+    @property
+    def dir_audios(self):
+        return self.dir_media / "audios"
+
+    @property
+    def dir_videos(self):
+        return self.dir_media / "videos"
+
+    @property
+    def dir_documents(self):
+        return self.dir_media / "documents"
+
+    @property
+    def dir_misc(self):
+        return self.dir_media / "misc"
 
 
 class Notification(models.Model):

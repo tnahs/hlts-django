@@ -44,7 +44,7 @@ class IndividualAdmin(ModelAdminUserMixin, admin.ModelAdmin):
 
 class SourceAdminForm(forms.ModelForm):
     def clean(self):
-        """ See Source model in nodes.models for notes. """
+        """ See apps.nodes.models.Source """
 
         pk = self.instance.pk
         name = self.cleaned_data.get("name")
@@ -97,8 +97,8 @@ class NodeAdmin(ModelAdminUserMixin, admin.ModelAdmin):
         "user",
         "date_created",
         "date_modified",
-        "topics",
-        "related_auto",
+        "auto_tags",
+        "auto_related",
     )
     fieldsets = (
         (
@@ -107,7 +107,7 @@ class NodeAdmin(ModelAdminUserMixin, admin.ModelAdmin):
                 "fields": (
                     "uuid",
                     "text",
-                    "file",
+                    "media",
                     "source",
                     "notes",
                     "tags",
@@ -126,8 +126,8 @@ class NodeAdmin(ModelAdminUserMixin, admin.ModelAdmin):
                     "user",
                     "date_created",
                     "date_modified",
-                    "topics",
-                    "related_auto",
+                    "auto_tag",
+                    "auto_related",
                 )
             },
         ),
