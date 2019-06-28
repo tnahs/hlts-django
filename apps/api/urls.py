@@ -1,4 +1,4 @@
-from django.urls import include, path
+from django.urls import include, path, re_path
 
 from rest_framework import routers
 
@@ -17,4 +17,8 @@ router.register("origins", views.OriginsViewSet, basename="origin")
 urlpatterns = [
     path("", include(router.urls)),
     path("auth/", include("rest_framework.urls", namespace="rest_framework")),
+    re_path(
+        r"merge/(?P<which>sources|tags|collections|origins)/$",
+        views.MergeView.as_view(),
+    ),
 ]

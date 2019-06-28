@@ -1,3 +1,4 @@
+import uuid
 import pathlib
 
 from django.db import models
@@ -10,6 +11,7 @@ class User(AbstractUser):
 
     THEME_CHOICES = [(0, "Default"), (1, "Dark")]
 
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     theme = models.IntegerField(choices=THEME_CHOICES, default=0)
 
     @property

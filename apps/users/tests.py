@@ -12,6 +12,6 @@ class TestUserModel:
 
     def test_save(self):
         self._load_dev_fixtures()
-        email = "testuser@email.com"
-        user = User.objects.create(email=email)
-        assert user.email == email
+        name = "testuser"
+        user = User.objects.create(name=name)
+        assert user.name == name

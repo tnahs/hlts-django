@@ -1,6 +1,5 @@
 import uuid
 import pathlib
-from typing import List, Union
 
 from django.db import models
 from django.contrib.auth import get_user_model
@@ -15,32 +14,71 @@ VALID_DOCUMENT_TYPES = [".pdf", ".txt", ".md"]
 
 
 class CommonDataMixin(models.Model):
-    class Meta:
-        abstract = True
-
-    # TODO: Add a method to stamp the time when a node is modified.
+    # QUESTION: Do we need created/modified for all models?
     date_created = models.DateTimeField(default=timezone.now)
     date_modified = models.DateTimeField(default=timezone.now)
 
+    class Meta:
+        abstract = True
+
     def __str__(self):
         return self.__repr__()
+
+    def save(self, *args, **kwargs):
+        self.date_modified = timezone.now()
+        super().save(*args, **kwargs)
+
+
+class IndividualManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset()
+
+    def get_or_create(self, user, individuals):
+
+        if not isinstance(individuals, list):
+            raise TypeError(f"Argument 'individuals' must be of type list.")
+
+        if not individuals:
+            return []
+
+        if isinstance(individuals[0], self.model):
+            [i.save() for i in individuals]
+            return individuals
+        elif isinstance(individuals[0], int):
+            return [self.get(pk=pk, user=user) for pk in individuals]
+        elif isinstance(individuals[0], str):
+            objs = []
+            for name in individuals:
+                try:
+                    obj = self.get(name=name, user=user)
+                except self.model.DoesNotExist:
+                    obj = self.create(name=name, user=user)
+                objs.add(obj)
+            return objs
+        else:
+            raise TypeError(
+                f"Unrecognized type {type(individuals[0])} in {individuals}."
+            )
 
 
 class Individual(CommonDataMixin, models.Model):
     """ Individual.aka handles name variants i.e. 'John Dough', 'J. Dough'
     and 'Dough, John J.' would be considered the same individual. """
 
-    class Meta:
-        unique_together = ["user", "name"]
-
     user = models.ForeignKey(
         get_user_model(), related_name="individuals", on_delete=models.CASCADE
     )
 
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True)
     name = models.CharField(max_length=256)
     first_name = models.CharField(max_length=256, blank=True)
     last_name = models.CharField(max_length=256, blank=True)
     aka = models.ManyToManyField("self", blank=True)
+
+    objects = IndividualManager()
+
+    class Meta:
+        unique_together = ("user", "name")
 
     def __repr__(self):
         return f"<{self.__class__.__name__}:{self.display_name}>"
@@ -51,14 +89,41 @@ class Individual(CommonDataMixin, models.Model):
             return f"{self.first_name} {self.last_name}"
         return self.name
 
+    @classmethod
+    def get_pks(cls, user, individuals):
+
+        # TODO: Add documentation.
+
+        if not isinstance(individuals, list):
+            raise TypeError(f"Argument 'individuals' must be of type list.")
+
+        if not individuals:
+            return []
+
+        if isinstance(individuals[0], int):
+            return individuals
+        elif isinstance(individuals[0], cls):
+            return {i.pk for i in individuals}
+        elif isinstance(individuals[0], str):
+            pks = []
+            for name in individuals:
+                try:
+                    obj = cls.objects.get(name=name, user=user)
+                except cls.DoesNotExist:
+                    obj = None
+                pks.add(obj.pk)
+            return pks
+        else:
+            raise TypeError(
+                f"Unrecognized type {type(individuals[0])} in {individuals}."
+            )
+
 
 class SourceManager(models.Manager):
     def get_queryset(self):
         return super().get_queryset()
 
-    def get_or_create(
-        self, user, name: str, individuals: List[Union[int, Individual, str]]
-    ):
+    def get_or_create(self, user, name, individuals):
 
         # TODO: Add documentation.
 
@@ -70,13 +135,13 @@ class SourceManager(models.Manager):
         )
 
         if sources:
-            new_pks = Source.get_individuals_pks(user, individuals)
+            new_pks = Individual.get_pks(user, individuals)
             for source in sources:
                 source_pks = {i.pk for i in source.individuals.all()}
                 if source_pks == new_pks:
                     return source
 
-        individuals = Source.get_or_create_individuals(user, individuals)
+        individuals = Individual.objects.get_or_create(user, individuals)
 
         source = self.get_queryset().create(name=name, user=user)
         source.individuals.set(individuals)
@@ -91,6 +156,7 @@ class Source(CommonDataMixin, models.Model):
         get_user_model(), related_name="sources", on_delete=models.CASCADE
     )
 
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True)
     name = models.CharField(max_length=256, blank=True)
     individuals = models.ManyToManyField(Individual, blank=True)
     url = models.URLField(max_length=256, blank=True)
@@ -112,21 +178,17 @@ class Source(CommonDataMixin, models.Model):
             individuals = ", ".join([i.display_name for i in self.individuals.all()])
             return f" - {individuals}"
 
-    # NOTE: Field validation has be done at the form/serializer level because
-    # of the way Django handles many-to-many relationships. Primary keys are
-    # needed to perform the Model.clean() method when validating a unique
-    # together between a field and a many-to-many relationship. The following
-    # validation methods **must** be called before any database transaction.
-
     @staticmethod
-    def validate_unique_together(
-        user,
-        name: str,
-        individuals: List[Union[int, Individual, str]],
-        source_pk: int = None,
-    ):
+    def validate_unique_together(user, name, individuals, source_pk=None):
         """ A Source may have multiple individuals. But two sources cannot have
-        the same set of individuals."""
+        the same set of individuals.
+
+        NOTE: Field validation has be done at the form/serializer level because
+        of the way Django handles many-to-many relationships. Primary keys are
+        needed to perform the Model.clean() method when validating a unique
+        together between a field and a many-to-many relationship. The following
+        validation methods **must** be called before any database transaction.
+        """
 
         # TODO: Add documentation.
 
@@ -144,7 +206,7 @@ class Source(CommonDataMixin, models.Model):
         if not sources:
             return
 
-        new_pks = Source.get_individuals_pks(user, individuals)
+        new_pks = Individual.objects.get_individuals_pks(user, individuals)
 
         for source in sources:
             source_pks = {i.pk for i in source.individuals.all()}
@@ -153,105 +215,52 @@ class Source(CommonDataMixin, models.Model):
                     f"Source '{name}' with selected individuals already exists."
                 )
 
-    @staticmethod
-    def get_individuals_pks(user, individuals: List[Union[int, Individual, str]]):
-
-        # TODO: Add documentation.
-
-        if not isinstance(individuals, list):
-            raise TypeError(f"Argument 'individuals' must be of type list.")
-
-        if not individuals:
-            return []
-
-        if isinstance(individuals[0], int):
-            return individuals
-        elif isinstance(individuals[0], Individual):
-            return {i.pk for i in individuals}
-        elif isinstance(individuals[0], str):
-            pks = []
-            for name in individuals:
-                try:
-                    obj = Individual.objects.get(name=name, user=user)
-                except Individual.DoesNotExist:
-                    obj = None
-                pks.add(obj.pk)
-            return pks
-        else:
-            raise TypeError(
-                f"Unrecognized type {type(individuals[0])} in {individuals}."
-            )
-
-    @staticmethod
-    def get_or_create_individuals(user, individuals: List[Union[int, Individual, str]]):
-
-        # TODO: Add documentation.
-
-        if not isinstance(individuals, list):
-            raise TypeError(f"Argument 'individuals' must be of type list.")
-
-        if not individuals:
-            return []
-
-        if isinstance(individuals[0], Individual):
-            [i.save() for i in individuals]
-            return individuals
-        elif isinstance(individuals[0], int):
-            return [Individual.objects.get(pk=pk, user=user) for pk in individuals]
-        elif isinstance(individuals[0], str):
-            objs = []
-            for name in individuals:
-                try:
-                    obj = Individual.objects.get(name=name, user=user)
-                except Individual.DoesNotExist:
-                    obj = Individual.objects.create(name=name, user=user)
-                objs.add(obj)
-            return objs
-        else:
-            raise TypeError(
-                f"Unrecognized type {type(individuals[0])} in {individuals}."
-            )
-
 
 class Tag(CommonDataMixin, models.Model):
-    class Meta:
-        unique_together = ["user", "name"]
 
     user = models.ForeignKey(
         get_user_model(), related_name="tags", on_delete=models.CASCADE
     )
 
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True)
     name = models.CharField(max_length=64)
+
+    class Meta:
+        unique_together = ("user", "name")
 
     def __repr__(self):
         return f"<{self.__class__.__name__}:{self.name}>"
 
 
 class Collection(CommonDataMixin, models.Model):
-    class Meta:
-        unique_together = ["user", "name"]
 
     user = models.ForeignKey(
         get_user_model(), related_name="collections", on_delete=models.CASCADE
     )
 
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True)
     name = models.CharField(max_length=64)
-    color = models.CharField(max_length=32)
-    description = models.TextField()
+    color = models.CharField(max_length=32, blank=True)
+    description = models.TextField(blank=True)
+
+    class Meta:
+        unique_together = ("user", "name")
 
     def __repr__(self):
         return f"<{self.__class__.__name__}:{self.name}>"
 
 
 class Origin(CommonDataMixin, models.Model):
-    class Meta:
-        unique_together = ["user", "name"]
 
     user = models.ForeignKey(
         get_user_model(), related_name="origins", on_delete=models.CASCADE
     )
 
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True)
     name = models.CharField(max_length=128)
+
+    class Meta:
+        unique_together = ("user", "name")
 
     def __repr__(self):
         return f"<{self.__class__.__name__}:{self.name}>"
@@ -280,20 +289,15 @@ def media_manager(instance, filename):
 
 
 class Node(CommonDataMixin, models.Model):
-    class Meta:
-        unique_together = ["user", "uuid"]
 
     user = models.ForeignKey(
         get_user_model(), related_name="nodes", on_delete=models.CASCADE
     )
 
-    uuid = models.UUIDField(default=uuid.uuid4, unique=True)
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True)
 
     # TODO: Validate that either text or media has a value.
     text = models.TextField(blank=True)
-    # TODO: Have this dynamically find out media type. Only accept supported
-    # media formats. Send the media to MEDIA_ROOT/user_<pk>/images/<filename>
-    # Then mark the Node as a certain "type".
     media = models.FileField(upload_to=media_manager, blank=True)
 
     source = models.ForeignKey(Source, on_delete=models.CASCADE, null=True, blank=True)
@@ -329,3 +333,21 @@ class Node(CommonDataMixin, models.Model):
 
     def __repr__(self):
         return f"<{self.__class__.__name__}:{self.display_name}>"
+
+    @property
+    def media_type(self):
+
+        if self.media:
+
+            filetype = pathlib.Path(self.media.name).suffix
+
+            if filetype in VALID_IMAGE_TYPES:
+                return "image"
+            elif filetype in VALID_AUDIO_TYPES:
+                return "audio"
+            elif filetype in VALID_VIDEO_TYPES:
+                return "video"
+            elif filetype in VALID_DOCUMENT_TYPES:
+                return "document"
+            else:
+                return "misc"

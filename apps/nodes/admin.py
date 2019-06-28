@@ -105,7 +105,7 @@ class NodeAdmin(ModelAdminUserMixin, admin.ModelAdmin):
             "Node",
             {
                 "fields": (
-                    "uuid",
+                    "id",
                     "text",
                     "media",
                     "source",
@@ -126,7 +126,7 @@ class NodeAdmin(ModelAdminUserMixin, admin.ModelAdmin):
                     "user",
                     "date_created",
                     "date_modified",
-                    "auto_tag",
+                    "auto_tags",
                     "auto_related",
                 )
             },
