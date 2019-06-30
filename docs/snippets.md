@@ -7,13 +7,20 @@ heroku run <command> --settings=config.settings.production
 # Django dumpdata
 
 python manage.py dumpdata \
-    --indent 4 \
+    --exclude admin \
     --exclude auth \
-    --exclude users \
     --exclude sessions \
     --exclude contenttypes \
     --settings=config.settings.development \
+    --indent 4 \
+    > tmp/dev_data.json
+
+python manage.py dumpdata \
+    users \
+    --indent 4 \
+    --settings=config.settings.development \
     > tmp/db.json
+
 
 python manage.py loaddata db.json
 

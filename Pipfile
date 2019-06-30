@@ -4,21 +4,22 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
+black = "*"
 flake8 = "*"
 pytest-django = "*"
 pytest-cov = "*"
 
 [packages]
-django = "*"
 gunicorn = "*"
+django = "*"
 dj-database-url = "*"
+djangorestframework = "*"
+djangorestframework-jwt = "*"
 whitenoise = "*"
+pillow = "*"
 
 [requires]
 python_version = "3.7"
 
-[scripts]
-mm = "python manage.py makemigrations --settings=config.settings.development"
-m = "python manage.py migrate --settings=config.settings.development"
-cs = "python manage.py createsuperuser --settings=config.settings.development"
-rs = "python manage.py runserver --settings=config.settings.development"
+[pipenv]
+allow_prereleases = true

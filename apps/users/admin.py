@@ -1,25 +1,36 @@
 from django.contrib import admin
-from django.contrib.auth.admin import UserAdmin
+from django.contrib.auth.admin import UserAdmin as UserAdminBase
 
-from .models import AppUser, Notification, Task
-from .forms import AppUserCreationForm, AppUserChangeForm
-
-
-@admin.register(AppUser)
-class AppUserAdmin(UserAdmin):
-
-    model = AppUser
-    add_form = AppUserCreationForm
-    form = AppUserChangeForm
-
-    list_display = ["username", "email"]
+from .models import User
 
 
-@admin.register(Notification)
-class NotificationAdmin(admin.ModelAdmin):
-    pass
+@admin.register(User)
+class UserAdmin(UserAdminBase):
+    """ https://docs.djangoproject.com/en/2.2/ref/contrib/admin/ """
 
+    fieldsets = (
+        (None, {"fields": ("email", "password", "first_name", "last_name")}),
+        ("Preferences", {"fields": ("theme",)}),
+        (
+            "Permissions",
+            {
+                "fields": (
+                    "is_active",
+                    "is_staff",
+                    "is_superuser",
+                    "groups",
+                    "user_permissions",
+                )
+            },
+        ),
+        ("Misc", {"fields": ("last_login",)}),
+    )
 
-@admin.register(Task)
-class TaskAdmin(admin.ModelAdmin):
-    pass
+    add_fieldsets = ((None, {"fields": ("email", "password1", "password2")}),)
+
+    ordering = ("email",)
+    search_fields = ()
+    list_filter = ()
+    list_display = ("__str__", "is_active", "is_staff", "is_superuser", "last_login")
+    readonly_fields = ("last_login",)
+    filter_horizontal = ("groups", "user_permissions")

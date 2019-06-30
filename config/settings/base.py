@@ -1,27 +1,25 @@
-
 import os
 import pathlib
+import datetime
 
 
 SITE_ROOT = pathlib.Path(__file__).parent.parent.parent
 SECRET_KEY = os.getenv("SECRET_KEY")
 
-STATIC_ROOT = SITE_ROOT / "staticfiles"
+STATIC_ROOT = SITE_ROOT / "static"
 STATIC_URL = "/static/"
-STATICFILES_DIRS = [
-    SITE_ROOT / "static",
-]
 
-FIXTURE_DIRS = [
-    SITE_ROOT / "fixtures",
-]
+MEDIA_ROOT = SITE_ROOT / "media"
+MEDIA_URL = "/media/"
+
+FIXTURE_DIRS = [SITE_ROOT / "fixtures"]
 
 WSGI_APPLICATION = "config.wsgi.application"
 ROOT_URLCONF = "config.urls"
 
-ALLOWED_HOSTS = ["*", ]
+ALLOWED_HOSTS = ["*"]
 
-AUTH_USER_MODEL = "users.AppUser"
+AUTH_USER_MODEL = "users.User"
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -30,11 +28,12 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-
     # local apps
     "apps.api.apps.ApiConfig",
     "apps.users.apps.UsersConfig",
-    "apps.passages.apps.PassagesConfig",
+    "apps.nodes.apps.NodesConfig",
+    # installed apps
+    "rest_framework",
 ]
 
 MIDDLEWARE = [
@@ -53,17 +52,34 @@ TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         "APP_DIRS": True,
-        "DIRS": [SITE_ROOT / "templates", ],
+        "DIRS": [],
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.debug",
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-            ],
+            ]
         },
-    },
+    }
 ]
+
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        # via http://getblimp.github.io/django-rest-framework-jwt/
+        "rest_framework_jwt.authentication.JSONWebTokenAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
+    ),
+    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
+    # "DEFAULT_RENDERER_CLASSES": ("rest_framework.renderers.JSONRenderer",),
+}
+
+JWT_AUTH = {
+    "JWT_EXPIRATION_DELTA": datetime.timedelta(days=1),
+    "JWT_AUTH_HEADER_PREFIX": "JWT",
+}
+
 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"

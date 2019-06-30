@@ -18,14 +18,21 @@ def main():
         print(f"Fixtures folder not found: {fixtures_dir}.")
         sys.exit(-1)
 
-    os.system(f"heroku pg:reset DATABASE_URL --confirm {APP_NAME_HEROKU} --app {APP_NAME_HEROKU}")
-    os.system(f"heroku run --app {APP_NAME_HEROKU} \
-              python manage.py migrate --settings=config.settings.production")
+    os.system(
+        f"heroku pg:reset DATABASE_URL --confirm {APP_NAME_HEROKU} \
+            --app {APP_NAME_HEROKU}"
+    )
+    os.system(
+        f"heroku run --app {APP_NAME_HEROKU} python manage.py \
+            migrate --settings=config.settings.production"
+    )
 
     for item in fixtures_dir.iterdir():
         if item.is_file() and item.suffix == ".json":
-            os.system(f"heroku run --app {APP_NAME_HEROKU} \
-                      python manage.py loaddata {item} --settings=config.settings.production")
+            os.system(
+                f"heroku run --app {APP_NAME_HEROKU} python manage.py \
+                    loaddata {item} --settings=config.settings.production"
+            )
 
 
 if __name__ == "__main__":
