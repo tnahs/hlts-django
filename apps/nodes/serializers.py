@@ -39,25 +39,35 @@ def _get_metadata(
     }
 
 
-UserRelatedField = serializers.SlugRelatedField(
+UserField = serializers.SlugRelatedField(
     slug_field="email", default=serializers.CurrentUserDefault(), read_only=True
 )
 
 
-class RelatedToUserField(serializers.RelatedField):
-    """ A field for retrieveing and creating objects requiring a user. Used to
-    implicitly enfore a unique_together contraint when creating nested objects
-    in a serializer.
+class PrimaryKeyToUserField(serializers.PrimaryKeyRelatedField):
+    """ A field requiring a user for retrieveing, appending objects based on
+    their primary keys. """
+
+    def get_queryset(self):
+        request = self.context.get("request")
+        return self.queryset.filter(user=request.user)
+
+
+class UniqueToUserField(serializers.RelatedField):
+    """ A field requiring a user for retrieveing, creating and appending
+    objects based on a unique_together constraint with the "user".
+
+    Primarily used to implicitly enfore a unique_together contraint with the
+    "user" when creating nested objects in a serializer.
 
     Parameters:
-
-    unique_field:str
+        unique_field:str
         default:None
         required:True
-        The field on the target instance used to represent it. It should
-        uniquely identify any given instance with with respect to its user.
-        In other words, the sibling to a unique_together constraint.
-        i.e. unique_together = [user, unique_field] """
+            The field on the target instance used to represent it. It should
+            uniquely identify any given instance with with respect to its user.
+            In other words, the sibling to a unique_together constraint.
+            i.e. unique_together = [user, unique_field] """
 
     def __init__(self, *args, **kwargs):
         self._unique_field = kwargs.pop("unique_field", None)
@@ -66,7 +76,7 @@ class RelatedToUserField(serializers.RelatedField):
         self.model = self.queryset.model
 
         if self._unique_field is None:
-            raise ValueError("RelatedToUserField 'unique_field' must be defined.")
+            raise ValueError("UniqueToUserField 'unique_field' must be defined.")
 
         try:
             self.model._meta.get_field(self._unique_field)
@@ -113,7 +123,7 @@ class SourceSerializer(serializers.Serializer):
 
     id = serializers.ReadOnlyField()
     name = serializers.CharField(max_length=256, allow_blank=True)
-    individuals = RelatedToUserField(
+    individuals = UniqueToUserField(
         unique_field="name",
         many=True,
         allow_null=True,
@@ -194,13 +204,13 @@ class IndividualSerializer(serializers.Serializer):
             )
         ]
 
-    user = UserRelatedField
+    user = UserField
     id = serializers.ReadOnlyField()
     name = serializers.CharField(max_length=256)
     first_name = serializers.CharField(max_length=256, allow_blank=True)
     last_name = serializers.CharField(max_length=256, allow_blank=True)
 
-    aka = RelatedToUserField(
+    aka = UniqueToUserField(
         unique_field="name",
         many=True,
         allow_null=True,
@@ -248,7 +258,7 @@ class TagSerializer(serializers.Serializer):
             )
         ]
 
-    user = UserRelatedField
+    user = UserField
     id = serializers.ReadOnlyField()
     name = serializers.CharField(max_length=64)
 
@@ -284,7 +294,7 @@ class CollectionSerializer(serializers.Serializer):
             )
         ]
 
-    user = UserRelatedField
+    user = UserField
     id = serializers.ReadOnlyField()
     name = serializers.CharField(max_length=64)
     color = serializers.CharField(allow_blank=True, max_length=32)
@@ -324,7 +334,7 @@ class OriginSerializer(serializers.Serializer):
             )
         ]
 
-    user = UserRelatedField
+    user = UserField
     id = serializers.ReadOnlyField()
     name = serializers.CharField(max_length=64)
 
@@ -356,7 +366,7 @@ class OriginSerializer(serializers.Serializer):
 class NestedSourceSerializer(serializers.Serializer):
 
     name = serializers.CharField(max_length=256, allow_blank=True)
-    individuals = RelatedToUserField(
+    individuals = UniqueToUserField(
         unique_field="name",
         many=True,
         allow_null=True,
@@ -372,27 +382,27 @@ class NodeSerializer(serializers.Serializer):
 
     source = NestedSourceSerializer(allow_null=True)
     notes = serializers.CharField(allow_blank=True)
-    tags = RelatedToUserField(
+    tags = UniqueToUserField(
         unique_field="name",
         many=True,
         allow_null=True,
         queryset=models.Tag.objects.all(),
     )
-    collections = RelatedToUserField(
+    collections = UniqueToUserField(
         unique_field="name",
         many=True,
         allow_null=True,
         queryset=models.Collection.objects.all(),
     )
 
-    origin = RelatedToUserField(
+    origin = UniqueToUserField(
         unique_field="name", allow_null=True, queryset=models.Origin.objects.all()
     )
 
     in_trash = serializers.BooleanField()
     is_starred = serializers.BooleanField()
 
-    related = serializers.PrimaryKeyRelatedField(
+    related = PrimaryKeyToUserField(
         many=True, allow_null=True, queryset=models.Node.objects.all()
     )
 

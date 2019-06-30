@@ -6,7 +6,18 @@ from rest_framework_jwt.views import obtain_jwt_token
 from . import views
 
 
-router = routers.SimpleRouter()
+class SimpleRouter(routers.SimpleRouter):
+    """ Re-configured for optional trailing slashes.
+
+    TODO: This still seems to add oddly on a DELETE request.
+    """
+
+    def __init__(self):
+        self.trailing_slash = "/?"
+        super().__init__()
+
+
+router = SimpleRouter()
 router.register("nodes", views.NodesViewSet, basename="node")
 router.register("sources", views.SourcesViewSet, basename="source")
 router.register("individuals", views.IndividualsViewSet, basename="individual")
