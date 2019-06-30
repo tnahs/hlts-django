@@ -1,27 +1,111 @@
-from rest_framework import viewsets
-from rest_framework.response import Response
+from rest_framework import viewsets, validators, status
 from rest_framework.views import APIView
-from rest_framework import validators
-
+from rest_framework.response import Response
+from rest_framework.reverse import reverse
 
 from ..nodes import models, serializers
 
 
+class NotFound(APIView):
+    def http_404_not_found(self):
+        return Response(
+            {"status": status.HTTP_404_NOT_FOUND, "detail": "Not found."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    def get(self, request):
+        return self.http_404_not_found()
+
+    def post(self, request):
+        return self.http_404_not_found()
+
+    def put(self, request):
+        return self.http_404_not_found()
+
+    def patch(self, request):
+        return self.http_404_not_found()
+
+    def delete(self, request):
+        return self.http_404_not_found()
+
+
+class ApiRoot(APIView):
+    """
+    API Documentation...
+    """
+
+    def get(self, request):
+
+        # Nodes
+        nodes = reverse("node-list", request=request)
+
+        # Node Data
+        sources = reverse("source-list", request=request)
+        individuals = reverse("individual-list", request=request)
+        tags = reverse("tag-list", request=request)
+        collections = reverse("collection-list", request=request)
+        origins = reverse("origin-list", request=request)
+
+        # Actions
+
+        # Merge
+        merge_sources = reverse("merge", args=["source"], request=request)
+        merge_tags = reverse("merge", args=["tag"], request=request)
+        merge_collections = reverse("merge", args=["collection"], request=request)
+        merge_origins = reverse("merge", args=["origin"], request=request)
+
+        return Response(
+            {
+                "data": {
+                    "nodes": nodes,
+                    "attributes": {
+                        "sources": sources,
+                        "individuals": individuals,
+                        "tags": tags,
+                        "collections": collections,
+                        "origins": origins,
+                    },
+                },
+                "actions": {
+                    "merge": {
+                        "sources": merge_sources,
+                        "tags": merge_tags,
+                        "collections": merge_collections,
+                        "origins": merge_origins,
+                    }
+                },
+            }
+        )
+
+
 class MergeView(APIView):
+    """
+    Merge Documentation...
+    """
 
     serializer_class = serializers.MergeSerializer
 
-    def get(self, request, which):
-        queryset = getattr(request.user, which).all()
+    def get_queryset(self, basename):
+        if basename == "source":
+            return models.Source.objects.all()
+        elif basename == "tag":
+            return models.Tag.objects.all()
+        elif basename == "collection":
+            return models.Collection.objects.all()
+        elif basename == "origin":
+            return models.Origin.objects.all()
+
+    def get(self, request, basename):
+        queryset = self.get_queryset(basename).filter(user=request.user)
         serialized = self.serializer_class(
-            queryset, many=True, context={"request": request}
+            queryset, many=True, context={"request": request, "basename": basename}
         )
-        return Response({f"mergable {which}": serialized.data})
+        return Response({basename: serialized.data})
 
     def post(self, request, which):
         """ 90% of this logic will be moved to the MergeSerializer.
         TODO: Process data here.
-        TODO: Warn that all data in src items will be lost and that only the.
+        TODO: Warn that all data in src items will be lost.
         {
             "dest": {
                 "name": "mauris"
@@ -72,11 +156,11 @@ class MergeView(APIView):
             src_objs.append(src_obj)
 
         dest_serialized = self.serializer_class(
-            destination_obj, context={"request": request}
+            destination_obj, context={"request": request, "which": which}
         )
 
         srcs_serialized = self.serializer_class(
-            src_objs, many=True, context={"request": request}
+            src_objs, many=True, context={"request": request, "which": which}
         )
 
         return Response(

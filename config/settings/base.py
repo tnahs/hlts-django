@@ -1,5 +1,6 @@
 import os
 import pathlib
+import datetime
 
 
 SITE_ROOT = pathlib.Path(__file__).parent.parent.parent
@@ -51,7 +52,7 @@ TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         "APP_DIRS": True,
-        "DIRS": [SITE_ROOT / "templates"],
+        "DIRS": [],
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.debug",
@@ -63,15 +64,25 @@ TEMPLATES = [
     }
 ]
 
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        # via http://getblimp.github.io/django-rest-framework-jwt/
+        "rest_framework_jwt.authentication.JSONWebTokenAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
+    ),
+    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
+    # "DEFAULT_RENDERER_CLASSES": ("rest_framework.renderers.JSONRenderer",),
+}
+
+JWT_AUTH = {
+    "JWT_EXPIRATION_DELTA": datetime.timedelta(days=1),
+    "JWT_AUTH_HEADER_PREFIX": "JWT",
+}
+
+
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_L10N = True
 USE_TZ = True
-
-REST_FRAMEWORK = {
-    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
-    # "DEFAULT_RENDERER_CLASSES": (
-    #     "rest_framework.renderers.JSONRenderer",
-    # ),
-}

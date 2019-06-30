@@ -10,12 +10,13 @@ pytest-django = "*"
 pytest-cov = "*"
 
 [packages]
-django = "*"
-djangorestframework = "*"
 gunicorn = "*"
+django = "*"
 dj-database-url = "*"
-pillow = "*"
+djangorestframework = "*"
+djangorestframework-jwt = "*"
 whitenoise = "*"
+pillow = "*"
 
 [requires]
 python_version = "3.7"

@@ -7,12 +7,6 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 
 
-VALID_IMAGE_TYPES = [".jpg", ".png", ".gif"]
-VALID_AUDIO_TYPES = [".mp3", ".aiff"]
-VALID_VIDEO_TYPES = [".mp4"]
-VALID_DOCUMENT_TYPES = [".pdf", ".txt", ".md"]
-
-
 class CommonDataMixin(models.Model):
     # QUESTION: Do we need created/modified for all models?
     date_created = models.DateTimeField(default=timezone.now)
@@ -21,8 +15,8 @@ class CommonDataMixin(models.Model):
     class Meta:
         abstract = True
 
-    def __str__(self):
-        return self.__repr__()
+    def __repr__(self):
+        return self.__str__()
 
     def save(self, *args, **kwargs):
         self.date_modified = timezone.now()
@@ -80,7 +74,7 @@ class Individual(CommonDataMixin, models.Model):
     class Meta:
         unique_together = ("user", "name")
 
-    def __repr__(self):
+    def __str__(self):
         return f"<{self.__class__.__name__}:{self.display_name}>"
 
     @property
@@ -94,7 +88,7 @@ class Individual(CommonDataMixin, models.Model):
 
         # TODO: Add documentation.
 
-        if not isinstance(individuals, list):
+        if not isinstance(individuals, (list, models.QuerySet)):
             raise TypeError(f"Argument 'individuals' must be of type list.")
 
         if not individuals:
@@ -165,7 +159,7 @@ class Source(CommonDataMixin, models.Model):
 
     objects = SourceManager()
 
-    def __repr__(self):
+    def __str__(self):
         return f"<{self.__class__.__name__}:{self.name}{self.by}>"
 
     @property
@@ -183,12 +177,12 @@ class Source(CommonDataMixin, models.Model):
         """ A Source may have multiple individuals. But two sources cannot have
         the same set of individuals.
 
-        NOTE: Field validation has be done at the form/serializer level because
-        of the way Django handles many-to-many relationships. Primary keys are
-        needed to perform the Model.clean() method when validating a unique
-        together between a field and a many-to-many relationship. The following
-        validation methods **must** be called before any database transaction.
-        """
+        NOTE: Field validation must be done at the form/serializer level
+        because of the way Django handles many-to-many relationships. Primary
+        keys are needed to perform the Model.clean() method when validating a
+        unique together between a field and a many-to-many relationship. The
+        following validation methods **must** be called before any database
+        transaction. """
 
         # TODO: Add documentation.
 
@@ -206,7 +200,7 @@ class Source(CommonDataMixin, models.Model):
         if not sources:
             return
 
-        new_pks = Individual.objects.get_individuals_pks(user, individuals)
+        new_pks = Individual.get_pks(user, individuals)
 
         for source in sources:
             source_pks = {i.pk for i in source.individuals.all()}
@@ -228,7 +222,7 @@ class Tag(CommonDataMixin, models.Model):
     class Meta:
         unique_together = ("user", "name")
 
-    def __repr__(self):
+    def __str__(self):
         return f"<{self.__class__.__name__}:{self.name}>"
 
 
@@ -246,7 +240,7 @@ class Collection(CommonDataMixin, models.Model):
     class Meta:
         unique_together = ("user", "name")
 
-    def __repr__(self):
+    def __str__(self):
         return f"<{self.__class__.__name__}:{self.name}>"
 
 
@@ -262,30 +256,56 @@ class Origin(CommonDataMixin, models.Model):
     class Meta:
         unique_together = ("user", "name")
 
-    def __repr__(self):
+    def __str__(self):
         return f"<{self.__class__.__name__}:{self.name}>"
 
 
 """ Nodes """
 
 
-def media_manager(instance, filename):
-    """ See apps.users.models.User """
+class MediaManager:
 
-    user = instance.user
+    VALID_IMAGE_TYPES = [".jpg", ".png", ".gif"]
+    VALID_AUDIO_TYPES = [".mp3", ".aiff"]
+    VALID_VIDEO_TYPES = [".mp4"]
+    VALID_DOCUMENT_TYPES = [".pdf", ".txt", ".md"]
 
-    filetype = pathlib.Path(filename).suffix
+    @staticmethod
+    def get_filename(path):
+        return pathlib.Path(path).name
 
-    if filetype in VALID_IMAGE_TYPES:
-        return user.dir_images / filename
-    elif filetype in VALID_AUDIO_TYPES:
-        return user.dir_audios / filename
-    elif filetype in VALID_VIDEO_TYPES:
-        return user.dir_videos / filename
-    elif filetype in VALID_DOCUMENT_TYPES:
-        return user.dir_documents / filename
-    else:
-        return user.dir_misc / filename
+    @classmethod
+    def get_folder(cls, instance, name):
+        """ See apps.users.models.User """
+
+        filetype = pathlib.Path(name).suffix
+
+        if filetype in cls.VALID_IMAGE_TYPES:
+            return instance.user.dir_images / name
+        elif filetype in cls.VALID_AUDIO_TYPES:
+            return instance.user.dir_audios / name
+        elif filetype in cls.VALID_VIDEO_TYPES:
+            return instance.user.dir_videos / name
+        elif filetype in cls.VALID_DOCUMENT_TYPES:
+            return instance.user.dir_documents / name
+        else:
+            return instance.user.dir_misc / name
+
+    @classmethod
+    def get_type(cls, name):
+
+        filetype = pathlib.Path(name).suffix
+
+        if filetype in cls.VALID_IMAGE_TYPES:
+            return "image"
+        elif filetype in cls.VALID_AUDIO_TYPES:
+            return "audio"
+        elif filetype in cls.VALID_VIDEO_TYPES:
+            return "video"
+        elif filetype in cls.VALID_DOCUMENT_TYPES:
+            return "document"
+        else:
+            return "misc"
 
 
 class Node(CommonDataMixin, models.Model):
@@ -298,7 +318,7 @@ class Node(CommonDataMixin, models.Model):
 
     # TODO: Validate that either text or media has a value.
     text = models.TextField(blank=True)
-    media = models.FileField(upload_to=media_manager, blank=True)
+    media = models.FileField(upload_to=MediaManager.get_folder, blank=True)
 
     source = models.ForeignKey(Source, on_delete=models.CASCADE, null=True, blank=True)
     notes = models.TextField(blank=True)
@@ -306,48 +326,43 @@ class Node(CommonDataMixin, models.Model):
     collections = models.ManyToManyField(Collection, blank=True)
 
     origin = models.ForeignKey(Origin, on_delete=models.CASCADE, null=True, blank=True)
+
     in_trash = models.BooleanField(default=False)
     is_starred = models.BooleanField(default=False)
 
     related = models.ManyToManyField("self", blank=True)
 
     # Read-only
+    # auto_ocr = models.TextField(blank=True)
     auto_tags = models.ManyToManyField(Tag, blank=True, related_name="auto_tagged")
     auto_related = models.ManyToManyField(
         "self", blank=True, related_name="auto_related"
     )
 
-    @property
-    def display_name(self):
-
-        name = []
-
-        if self.text:
-            name.append(f"{self.text[:64].strip()}")
-        if self.media:
-            name.append(f"{self.media.name}")
-
-        name = ":".join(name)
-
-        return name
-
-    def __repr__(self):
+    def __str__(self):
         return f"<{self.__class__.__name__}:{self.display_name}>"
 
     @property
-    def media_type(self):
+    def display_name(self):
+
+        name = [self.node_type]
+
+        if self.text:
+            name.append(f"{self.text[:32].strip()}...")
 
         if self.media:
+            name.append(MediaManager.get_filename(self.media.name))
 
-            filetype = pathlib.Path(self.media.name).suffix
+        return "/".join(name)
 
-            if filetype in VALID_IMAGE_TYPES:
-                return "image"
-            elif filetype in VALID_AUDIO_TYPES:
-                return "audio"
-            elif filetype in VALID_VIDEO_TYPES:
-                return "video"
-            elif filetype in VALID_DOCUMENT_TYPES:
-                return "document"
-            else:
-                return "misc"
+    @property
+    def node_type(self):
+
+        _type = []
+
+        if self.text:
+            _type.append("text")
+        if self.media:
+            _type.append(MediaManager.get_type(self.media.name))
+
+        return "/".join(_type)

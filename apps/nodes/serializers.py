@@ -1,11 +1,12 @@
 from django.core.exceptions import ValidationError, FieldDoesNotExist
 
 from rest_framework import serializers, exceptions, validators
+from rest_framework.reverse import reverse
 
 from . import models
 
 
-def update_instance(instance, data: dict, attrs: list):
+def _update_instance(instance, data: dict, attrs: list):
     """ instance.attr = data.get("attr", instance.attr) """
 
     for attr in attrs:
@@ -16,29 +17,59 @@ def update_instance(instance, data: dict, attrs: list):
     return instance
 
 
-class UniqueToUserField(serializers.RelatedField):
-    # TODO: Do we need this?
-    def __init__(self, *args, **kwargs):
-        """
-        Parameters
+def _get_metadata(
+    obj, self_basename, connection_queryset, connection_basename, request
+):
+    self_view = f"{self_basename}-detail"
+    connection_view = f"{connection_basename}-detail"
 
-        unique_with:str
-            default:None
-            The field on the target instance used to represent it. This should
-            be the sibling to a unique_together constraint. It should uniquely
-            identify any given instance with with respect to its user. i.e.
-            `unique_together = [user, unique_with]`
-        """
-        self._unique_with = kwargs.pop("unique_with", None)
+    api_url = reverse(self_view, args=[obj.pk], request=request)
+    connections_count = connection_queryset.count()
+    connections = [
+        reverse(connection_view, args=[n.pk], request=request)
+        for n in connection_queryset
+    ]
+
+    return {
+        "api_url": api_url,
+        f"{connection_basename}_connections_count": connections_count,
+        f"{connection_basename}_connections": connections,
+        "date_created": obj.date_created,
+        "date_modified": obj.date_modified,
+    }
+
+
+UserRelatedField = serializers.SlugRelatedField(
+    slug_field="email", default=serializers.CurrentUserDefault(), read_only=True
+)
+
+
+class RelatedToUserField(serializers.RelatedField):
+    """ A field for retrieveing and creating objects requiring a user. Used to
+    implicitly enfore a unique_together contraint when creating nested objects
+    in a serializer.
+
+    Parameters:
+
+    unique_field:str
+        default:None
+        required:True
+        The field on the target instance used to represent it. It should
+        uniquely identify any given instance with with respect to its user.
+        In other words, the sibling to a unique_together constraint.
+        i.e. unique_together = [user, unique_field] """
+
+    def __init__(self, *args, **kwargs):
+        self._unique_field = kwargs.pop("unique_field", None)
         super().__init__(*args, **kwargs)
 
         self.model = self.queryset.model
 
-        if self._unique_with is None:
-            raise ValueError("UniqueToUserField 'unique_with' must be defined.")
+        if self._unique_field is None:
+            raise ValueError("RelatedToUserField 'unique_field' must be defined.")
 
         try:
-            self.model._meta.get_field(self._unique_with)
+            self.model._meta.get_field(self._unique_field)
         except FieldDoesNotExist:
             raise
 
@@ -49,13 +80,13 @@ class UniqueToUserField(serializers.RelatedField):
     def to_internal_value(self, data):
 
         try:
-            return self.get_queryset().get(**{self._unique_with: data})
+            return self.get_queryset().get(**{self._unique_field: data})
         except self.model.DoesNotExist:
             request = self.context.get("request")
-            return self.model(user=request.user, **{self._unique_with: data})
+            return self.model(user=request.user, **{self._unique_field: data})
 
     def to_representation(self, obj):
-        return getattr(obj, self._unique_with)
+        return getattr(obj, self._unique_field)
 
 
 #
@@ -66,21 +97,24 @@ class MergeSerializer(serializers.Serializer):
     id = serializers.ReadOnlyField()
     name = serializers.CharField(max_length=256)
 
-    _node_connections_count = serializers.SerializerMethodField()
-    _node_connections = serializers.HyperlinkedRelatedField(
-        source="node_set", many=True, read_only=True, view_name="node-detail"
-    )
+    _metadata = serializers.SerializerMethodField("get_metadata")
 
-    def get__node_connections_count(self, obj):
-        return obj.node_set.count()
+    def get_metadata(self, obj):
+        return _get_metadata(
+            obj=obj,
+            self_basename=self.context.get("basename"),
+            connection_queryset=obj.node_set.all(),
+            connection_basename="node",
+            request=self.context.get("request"),
+        )
 
 
 class SourceSerializer(serializers.Serializer):
 
     id = serializers.ReadOnlyField()
     name = serializers.CharField(max_length=256, allow_blank=True)
-    individuals = UniqueToUserField(
-        unique_with="name",
+    individuals = RelatedToUserField(
+        unique_field="name",
         many=True,
         allow_null=True,
         queryset=models.Individual.objects.all(),
@@ -89,20 +123,20 @@ class SourceSerializer(serializers.Serializer):
     date = serializers.DateField(allow_null=True)
     notes = serializers.CharField(allow_blank=True)
 
-    _url = serializers.HyperlinkedIdentityField(view_name="source-detail")
+    _metadata = serializers.SerializerMethodField("get_metadata")
 
-    _node_connections_count = serializers.SerializerMethodField()
-    _node_connections = serializers.HyperlinkedRelatedField(
-        source="node_set", many=True, read_only=True, view_name="node-detail"
-    )
-
-    def get__node_connections_count(self, obj):
-        return obj.node_set.count()
+    def get_metadata(self, obj):
+        return _get_metadata(
+            obj=obj,
+            self_basename="source",
+            connection_queryset=obj.node_set.all(),
+            connection_basename="node",
+            request=self.context.get("request"),
+        )
 
     def validate(self, data):
         """ See apps.nodes.models.Source """
 
-        # TODO: Can we remove this request line?
         request = self.context.get("request")
 
         name = data.get("name")
@@ -138,7 +172,7 @@ class SourceSerializer(serializers.Serializer):
 
     def update(self, instance, validated_data):
 
-        updated_instance = update_instance(
+        updated_instance = _update_instance(
             instance, validated_data, ["name", "url", "date", "notes"]
         )
 
@@ -160,31 +194,29 @@ class IndividualSerializer(serializers.Serializer):
             )
         ]
 
-    user = serializers.StringRelatedField(
-        default=serializers.CurrentUserDefault(), read_only=True
-    )
-
+    user = UserRelatedField
     id = serializers.ReadOnlyField()
     name = serializers.CharField(max_length=256)
     first_name = serializers.CharField(max_length=256, allow_blank=True)
     last_name = serializers.CharField(max_length=256, allow_blank=True)
 
-    aka = UniqueToUserField(
-        unique_with="name",
+    aka = RelatedToUserField(
+        unique_field="name",
         many=True,
         allow_null=True,
         queryset=models.Individual.objects.all(),
     )
 
-    _url = serializers.HyperlinkedIdentityField(view_name="individual-detail")
+    _metadata = serializers.SerializerMethodField("get_metadata")
 
-    _source_connections_count = serializers.SerializerMethodField()
-    _source_connections = serializers.HyperlinkedRelatedField(
-        source="source_set", many=True, read_only=True, view_name="source-detail"
-    )
-
-    def get__source_connections_count(self, obj):
-        return obj.source_set.count()
+    def get_metadata(self, obj):
+        return _get_metadata(
+            obj=obj,
+            self_basename="individual",
+            connection_queryset=obj.source_set.all(),
+            connection_basename="source",
+            request=self.context.get("request"),
+        )
 
     def create(self, validated_data):
 
@@ -198,7 +230,7 @@ class IndividualSerializer(serializers.Serializer):
 
     def update(self, instance, validated_data):
 
-        updated_instance = update_instance(
+        updated_instance = _update_instance(
             instance, validated_data, ["name", "first_name", "last_name"]
         )
         updated_instance.save()
@@ -216,29 +248,27 @@ class TagSerializer(serializers.Serializer):
             )
         ]
 
-    user = serializers.StringRelatedField(
-        default=serializers.CurrentUserDefault(), read_only=True
-    )
-
+    user = UserRelatedField
     id = serializers.ReadOnlyField()
     name = serializers.CharField(max_length=64)
 
-    _url = serializers.HyperlinkedIdentityField(view_name="tag-detail")
+    _metadata = serializers.SerializerMethodField("get_metadata")
 
-    _node_connections_count = serializers.SerializerMethodField()
-    _node_connections = serializers.HyperlinkedRelatedField(
-        source="node_set", many=True, read_only=True, view_name="node-detail"
-    )
-
-    def get__node_connections_count(self, obj):
-        return obj.node_set.count()
+    def get_metadata(self, obj):
+        return _get_metadata(
+            obj=obj,
+            self_basename="tag",
+            connection_queryset=obj.node_set.all(),
+            connection_basename="node",
+            request=self.context.get("request"),
+        )
 
     def create(self, validated_data):
         return models.Tag.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
 
-        updated_instance = update_instance(instance, validated_data, ["name"])
+        updated_instance = _update_instance(instance, validated_data, ["name"])
         updated_instance.save()
 
         return updated_instance
@@ -254,31 +284,29 @@ class CollectionSerializer(serializers.Serializer):
             )
         ]
 
-    user = serializers.StringRelatedField(
-        default=serializers.CurrentUserDefault(), read_only=True
-    )
-
+    user = UserRelatedField
     id = serializers.ReadOnlyField()
     name = serializers.CharField(max_length=64)
     color = serializers.CharField(allow_blank=True, max_length=32)
     description = serializers.CharField(allow_blank=True)
 
-    _url = serializers.HyperlinkedIdentityField(view_name="collection-detail")
+    _metadata = serializers.SerializerMethodField("get_metadata")
 
-    _node_connections_count = serializers.SerializerMethodField()
-    _node_connections = serializers.HyperlinkedRelatedField(
-        source="node_set", many=True, read_only=True, view_name="node-detail"
-    )
-
-    def get__node_connections_count(self, obj):
-        return obj.node_set.count()
+    def get_metadata(self, obj):
+        return _get_metadata(
+            obj=obj,
+            self_basename="collection",
+            connection_queryset=obj.node_set.all(),
+            connection_basename="node",
+            request=self.context.get("request"),
+        )
 
     def create(self, validated_data):
         return models.Collection.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
 
-        updated_instance = update_instance(
+        updated_instance = _update_instance(
             instance, validated_data, ["name", "color", "description"]
         )
         updated_instance.save()
@@ -296,29 +324,27 @@ class OriginSerializer(serializers.Serializer):
             )
         ]
 
-    user = serializers.StringRelatedField(
-        default=serializers.CurrentUserDefault(), read_only=True
-    )
-
+    user = UserRelatedField
     id = serializers.ReadOnlyField()
     name = serializers.CharField(max_length=64)
 
-    _url = serializers.HyperlinkedIdentityField(view_name="origin-detail")
+    _metadata = serializers.SerializerMethodField("get_metadata")
 
-    _node_connections_count = serializers.SerializerMethodField()
-    _node_connections = serializers.HyperlinkedRelatedField(
-        source="node_set", many=True, read_only=True, view_name="node-detail"
-    )
-
-    def get__node_connections_count(self, obj):
-        return obj.node_set.count()
+    def get_metadata(self, obj):
+        return _get_metadata(
+            obj=obj,
+            self_basename="origin",
+            connection_queryset=obj.node_set.all(),
+            connection_basename="node",
+            request=self.context.get("request"),
+        )
 
     def create(self, validated_data):
         return models.Origin.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
 
-        updated_instance = update_instance(instance, validated_data, ["name"])
+        updated_instance = _update_instance(instance, validated_data, ["name"])
         updated_instance.save()
 
         return updated_instance
@@ -330,8 +356,8 @@ class OriginSerializer(serializers.Serializer):
 class NestedSourceSerializer(serializers.Serializer):
 
     name = serializers.CharField(max_length=256, allow_blank=True)
-    individuals = UniqueToUserField(
-        unique_with="name",
+    individuals = RelatedToUserField(
+        unique_field="name",
         many=True,
         allow_null=True,
         queryset=models.Individual.objects.all(),
@@ -346,21 +372,21 @@ class NodeSerializer(serializers.Serializer):
 
     source = NestedSourceSerializer(allow_null=True)
     notes = serializers.CharField(allow_blank=True)
-    tags = UniqueToUserField(
-        unique_with="name",
+    tags = RelatedToUserField(
+        unique_field="name",
         many=True,
         allow_null=True,
         queryset=models.Tag.objects.all(),
     )
-    collections = UniqueToUserField(
-        unique_with="name",
+    collections = RelatedToUserField(
+        unique_field="name",
         many=True,
         allow_null=True,
         queryset=models.Collection.objects.all(),
     )
 
-    origin = UniqueToUserField(
-        unique_with="name", allow_null=True, queryset=models.Origin.objects.all()
+    origin = RelatedToUserField(
+        unique_field="name", allow_null=True, queryset=models.Origin.objects.all()
     )
 
     in_trash = serializers.BooleanField()
@@ -376,7 +402,16 @@ class NodeSerializer(serializers.Serializer):
     date_created = serializers.DateTimeField(allow_null=True)
     date_modified = serializers.DateTimeField(allow_null=True)
 
-    _url = serializers.HyperlinkedIdentityField(view_name="node-detail")
+    _metadata = serializers.SerializerMethodField("get_metadata")
+
+    def get_metadata(self, obj):
+        return _get_metadata(
+            obj=obj,
+            self_basename="node",
+            connection_queryset=obj.related.all() | obj.auto_related.all(),
+            connection_basename="node",
+            request=self.context.get("request"),
+        )
 
     def validate(self, data):
 
@@ -479,7 +514,7 @@ class NodeSerializer(serializers.Serializer):
         if related:
             instance.related.set(related)
 
-        update_instance(
+        _update_instance(
             instance,
             validated_data,
             [
