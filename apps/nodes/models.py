@@ -345,6 +345,8 @@ class Node(CommonDataMixin, models.Model):
     @property
     def display_name(self):
 
+        # TODO: Clean this up.
+
         name = [self.node_type]
 
         if self.text:
@@ -353,7 +355,7 @@ class Node(CommonDataMixin, models.Model):
         if self.media:
             name.append(MediaManager.get_filename(self.media.name))
 
-        return "/".join(name)
+        return ":".join(name)
 
     @property
     def node_type(self):
