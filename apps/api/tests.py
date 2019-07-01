@@ -1,13 +1,14 @@
 import pytest
 
-from django.core.management import call_command
+# from django.core import management
+
+# @pytest.fixture(scope="session")
+# def django_db_setup(django_db_setup, django_db_blocker):
+#     with django_db_blocker.unblock():
+#         management.call_command("loaddata", "fixtures/dev_data.json")
 
 
 @pytest.mark.django_db
 class TestApi:
-    def _load_dev_fixtures(self):
-        call_command("loaddata", "fixtures/dev_db.json")
-
     def test_save(self):
-        self._load_dev_fixtures()
         pass

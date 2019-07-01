@@ -1,9 +1,9 @@
-import uuid
 import pathlib
+import uuid
 
-from django.db import models
 from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
+from django.db import models
 
 
 class UserManager(BaseUserManager):
@@ -100,6 +100,8 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     # via AbstractUser
     def clean(self):
+        # TODO: This does not seem to be called by the model but rather the
+        # admin form. Do some testing to verify and check if we *need* it...
         super().clean()
         self.email = self.__class__.objects.normalize_email(self.email)
 

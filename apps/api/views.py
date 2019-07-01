@@ -1,9 +1,18 @@
-from rest_framework import viewsets, validators, status
-from rest_framework.views import APIView
+from rest_framework import status, validators, viewsets
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
+from rest_framework.views import APIView
 
-from ..nodes import models, serializers
+from ..nodes.models import Collection, Individual, Node, Origin, Source, Tag
+from ..nodes.serializers import (
+    CollectionSerializer,
+    IndividualSerializer,
+    MergeSerializer,
+    NodeSerializer,
+    OriginSerializer,
+    SourceSerializer,
+    TagSerializer,
+)
 
 
 class NotFound(APIView):
@@ -83,17 +92,17 @@ class MergeView(APIView):
     Merge Documentation...
     """
 
-    serializer_class = serializers.MergeSerializer
+    serializer_class = MergeSerializer
 
     def get_queryset(self, basename):
         if basename == "source":
-            return models.Source.objects.all()
+            return Source.objects.all()
         elif basename == "tag":
-            return models.Tag.objects.all()
+            return Tag.objects.all()
         elif basename == "collection":
-            return models.Collection.objects.all()
+            return Collection.objects.all()
         elif basename == "origin":
-            return models.Origin.objects.all()
+            return Origin.objects.all()
 
     def get(self, request, basename):
         queryset = self.get_queryset(basename).filter(user=request.user)
@@ -183,30 +192,30 @@ class QuerysetMixin:
 
 
 class SourcesViewSet(QuerysetMixin, viewsets.ModelViewSet):
-    queryset = models.Source.objects.all()
-    serializer_class = serializers.SourceSerializer
+    queryset = Source.objects.all()
+    serializer_class = SourceSerializer
 
 
 class IndividualsViewSet(QuerysetMixin, viewsets.ModelViewSet):
-    queryset = models.Individual.objects.all()
-    serializer_class = serializers.IndividualSerializer
+    queryset = Individual.objects.all()
+    serializer_class = IndividualSerializer
 
 
 class TagsViewSet(QuerysetMixin, viewsets.ModelViewSet):
-    queryset = models.Tag.objects.all()
-    serializer_class = serializers.TagSerializer
+    queryset = Tag.objects.all()
+    serializer_class = TagSerializer
 
 
 class CollectionsViewSet(QuerysetMixin, viewsets.ModelViewSet):
-    queryset = models.Collection.objects.all()
-    serializer_class = serializers.CollectionSerializer
+    queryset = Collection.objects.all()
+    serializer_class = CollectionSerializer
 
 
 class OriginsViewSet(QuerysetMixin, viewsets.ModelViewSet):
-    queryset = models.Origin.objects.all()
-    serializer_class = serializers.OriginSerializer
+    queryset = Origin.objects.all()
+    serializer_class = OriginSerializer
 
 
 class NodesViewSet(QuerysetMixin, viewsets.ModelViewSet):
-    queryset = models.Node.objects.all()
-    serializer_class = serializers.NodeSerializer
+    queryset = Node.objects.all()
+    serializer_class = NodeSerializer

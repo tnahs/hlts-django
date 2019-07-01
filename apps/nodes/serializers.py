@@ -1,9 +1,8 @@
-from django.core.exceptions import ValidationError, FieldDoesNotExist
-
-from rest_framework import serializers, exceptions, validators
+from django.core.exceptions import FieldDoesNotExist
+from rest_framework import exceptions, serializers, validators
 from rest_framework.reverse import reverse
 
-from . import models
+from .models import Collection, Individual, Node, Origin, Source, Tag
 
 
 def _update_instance(instance, data: dict, attrs: list):
@@ -127,10 +126,10 @@ class SourceSerializer(serializers.Serializer):
         unique_field="name",
         many=True,
         allow_null=True,
-        queryset=models.Individual.objects.all(),
+        queryset=Individual.objects.all(),
     )
-    url = serializers.URLField(max_length=256, allow_blank=True)
-    date = serializers.DateField(allow_null=True)
+    url = serializers.CharField(max_length=256, allow_blank=True)
+    date = serializers.CharField(allow_blank=True)
     notes = serializers.CharField(allow_blank=True)
 
     _metadata = serializers.SerializerMethodField("get_metadata")
@@ -145,40 +144,29 @@ class SourceSerializer(serializers.Serializer):
         )
 
     def validate(self, data):
-        """ See apps.nodes.models.Source """
+        """ See apps.nodes.Source """
 
         request = self.context.get("request")
 
-        name = data.get("name")
-        individuals = data.get("individuals")
+        name = data.get("name", None)
+        individuals = data.get("individuals", None)
 
         if not name and not individuals:
             raise exceptions.ValidationError(
                 "Both 'name' and 'individuals' cannot be blank."
             )
 
-        try:
-            models.Source.validate_unique_together(request.user, name, individuals)
-        except ValidationError as error:
-            raise serializers.ValidationError(error.message)
+        Source.validate_unique_together(request.user, name, individuals)
 
         return data
 
     def create(self, validated_data):
 
-        user = validated_data.get("user", None)
-        name = validated_data.get("name", None)
-        individuals = validated_data.get("individuals", None)
+        user = validated_data.pop("user", None)
+        name = validated_data.pop("name", None)
+        individuals = validated_data.pop("individuals", None)
 
-        source = models.Source.objects.get_or_create(user, name, individuals)
-
-        source.url = validated_data.get("url", None)
-        source.date = validated_data.get("date", None)
-        source.notes = validated_data.get("notes", None)
-
-        source.save()
-
-        return source
+        return Source.objects.create(user, name, individuals, validated_data)
 
     def update(self, instance, validated_data):
 
@@ -198,7 +186,7 @@ class IndividualSerializer(serializers.Serializer):
     class Meta:
         validators = [
             validators.UniqueTogetherValidator(
-                queryset=models.Individual.objects.all(),
+                queryset=Individual.objects.all(),
                 fields=("user", "name"),
                 message="Individual already exists.",
             )
@@ -214,7 +202,7 @@ class IndividualSerializer(serializers.Serializer):
         unique_field="name",
         many=True,
         allow_null=True,
-        queryset=models.Individual.objects.all(),
+        queryset=Individual.objects.all(),
     )
 
     _metadata = serializers.SerializerMethodField("get_metadata")
@@ -232,7 +220,7 @@ class IndividualSerializer(serializers.Serializer):
 
         aka = validated_data.pop("aka")
 
-        individual = models.Individual.objects.create(**validated_data)
+        individual = Individual.objects.create(**validated_data)
         individual.aka.set(aka)
         individual.save()
 
@@ -252,7 +240,7 @@ class TagSerializer(serializers.Serializer):
     class Meta:
         validators = [
             validators.UniqueTogetherValidator(
-                queryset=models.Tag.objects.all(),
+                queryset=Tag.objects.all(),
                 fields=("user", "name"),
                 message="Tag already exists.",
             )
@@ -274,7 +262,7 @@ class TagSerializer(serializers.Serializer):
         )
 
     def create(self, validated_data):
-        return models.Tag.objects.create(**validated_data)
+        return Tag.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
 
@@ -288,7 +276,7 @@ class CollectionSerializer(serializers.Serializer):
     class Meta:
         validators = [
             validators.UniqueTogetherValidator(
-                queryset=models.Collection.objects.all(),
+                queryset=Collection.objects.all(),
                 fields=("user", "name"),
                 message="Collection already exists.",
             )
@@ -312,7 +300,7 @@ class CollectionSerializer(serializers.Serializer):
         )
 
     def create(self, validated_data):
-        return models.Collection.objects.create(**validated_data)
+        return Collection.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
 
@@ -328,7 +316,7 @@ class OriginSerializer(serializers.Serializer):
     class Meta:
         validators = [
             validators.UniqueTogetherValidator(
-                queryset=models.Origin.objects.all(),
+                queryset=Origin.objects.all(),
                 fields=("user", "name"),
                 message="Origin already exists.",
             )
@@ -350,7 +338,7 @@ class OriginSerializer(serializers.Serializer):
         )
 
     def create(self, validated_data):
-        return models.Origin.objects.create(**validated_data)
+        return Origin.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
 
@@ -370,7 +358,7 @@ class NestedSourceSerializer(serializers.Serializer):
         unique_field="name",
         many=True,
         allow_null=True,
-        queryset=models.Individual.objects.all(),
+        queryset=Individual.objects.all(),
     )
 
 
@@ -383,27 +371,24 @@ class NodeSerializer(serializers.Serializer):
     source = NestedSourceSerializer(allow_null=True)
     notes = serializers.CharField(allow_blank=True)
     tags = UniqueToUserField(
-        unique_field="name",
-        many=True,
-        allow_null=True,
-        queryset=models.Tag.objects.all(),
+        unique_field="name", many=True, allow_null=True, queryset=Tag.objects.all()
     )
     collections = UniqueToUserField(
         unique_field="name",
         many=True,
         allow_null=True,
-        queryset=models.Collection.objects.all(),
+        queryset=Collection.objects.all(),
     )
 
     origin = UniqueToUserField(
-        unique_field="name", allow_null=True, queryset=models.Origin.objects.all()
+        unique_field="name", allow_null=True, queryset=Origin.objects.all()
     )
 
     in_trash = serializers.BooleanField()
     is_starred = serializers.BooleanField()
 
     related = PrimaryKeyToUserField(
-        many=True, allow_null=True, queryset=models.Node.objects.all()
+        many=True, allow_null=True, queryset=Node.objects.all()
     )
 
     auto_tags = serializers.StringRelatedField(many=True, read_only=True)
@@ -415,6 +400,9 @@ class NodeSerializer(serializers.Serializer):
     _metadata = serializers.SerializerMethodField("get_metadata")
 
     def get_metadata(self, obj):
+
+        # TODO: This returns date_created and date_modified a second time...
+
         return _get_metadata(
             obj=obj,
             self_basename="node",
@@ -444,43 +432,44 @@ class NodeSerializer(serializers.Serializer):
         if not validated_data.get("date_modified"):
             validated_data.pop("date_modified")
 
-        source = validated_data.pop("source", None)
-        collections = validated_data.pop("collections", None)
-        tags = validated_data.pop("tags", None)
-        origin = validated_data.pop("origin", None)
-        related = validated_data.pop("related", None)
+        source_data = validated_data.pop("source", None)
+
+        tag_objs = validated_data.pop("tags", None)
+        collection_objs = validated_data.pop("collections", None)
+        origin_obj = validated_data.pop("origin", None)
+        related_objs = validated_data.pop("related", None)
 
         # FIXME make sure to run set() on anything that is [user, name] unique.
         # Unique together constraint fails if the user put in 2 of the same name.
 
-        node = models.Node.objects.create(user=user, **validated_data)
+        node = Node.objects.create(user=user, **validated_data)
 
-        if any(source.values()):
+        if any(source_data.values()):
 
-            source_name = source.get("name", None)
-            source_individuals = source.get("individuals", None)
+            source_name = source_data.pop("name", None)
+            source_individuals = source_data.pop("individuals", None)
 
-            source = models.Source.objects.get_or_create(
-                user, source_name, source_individuals
+            source_obj = Source.objects.get_or_create(
+                user, source_name, source_individuals, extra_data=source_data
             )
-            node.source = source
+            node.source = source_obj
 
-        if tags:
-            for t in tags:
+        if tag_objs:
+            for t in tag_objs:
                 t.save()
-            node.tags.set(tags)
+            node.tags.set(tag_objs)
 
-        if collections:
-            for c in collections:
+        if collection_objs:
+            for c in collection_objs:
                 c.save()
-            node.collections.set(collections)
+            node.collections.set(collection_objs)
 
-        if origin:
-            origin.save()
-            node.origin = origin
+        if origin_obj:
+            origin_obj.save()
+            node.origin = origin_obj
 
-        if related:
-            node.related.set(related)
+        if related_objs:
+            node.related.set(related_objs)
 
         node.save()
 
@@ -490,39 +479,40 @@ class NodeSerializer(serializers.Serializer):
 
         user = validated_data.pop("user", None)
 
-        source = validated_data.pop("source", None)
-        collections = validated_data.pop("collections", None)
-        tags = validated_data.pop("tags", None)
-        origin = validated_data.pop("origin", None)
-        related = validated_data.pop("related", None)
+        source_data = validated_data.pop("source", None)
 
-        if source:
-            if any(source.values()):
+        tag_objs = validated_data.pop("tags", None)
+        collection_objs = validated_data.pop("collections", None)
+        origin_obj = validated_data.pop("origin", None)
+        related_objs = validated_data.pop("related", None)
 
-                source_name = source.get("name", None)
-                source_individuals = source.get("individuals", None)
+        if source_data:
+            if any(source_data.values()):
 
-                source = models.Source.objects.get_or_create(
-                    user, source_name, source_individuals
+                source_name = source_data.pop("name", None)
+                source_individuals = source_data.pop("individuals", None)
+
+                source_obj = Source.objects.get_or_create(
+                    user, source_name, source_individuals, extra_data=source_data
                 )
-                instance.source = source
+                instance.source = source_obj
 
-        if tags:
-            for t in tags:
+        if tag_objs:
+            for t in tag_objs:
                 t.save()
-            instance.tags.set(tags)
+            instance.tags.set(tag_objs)
 
-        if collections:
-            for c in collections:
+        if collection_objs:
+            for c in collection_objs:
                 c.save()
-            instance.collections.set(collections)
+            instance.collections.set(collection_objs)
 
-        if origin:
-            origin.save()
-            instance.origin = origin
+        if origin_obj:
+            origin_obj.save()
+            instance.origin = origin_obj
 
-        if related:
-            instance.related.set(related)
+        if related_objs:
+            instance.related.set(related_objs)
 
         _update_instance(
             instance,

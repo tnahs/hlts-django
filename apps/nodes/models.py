@@ -1,14 +1,16 @@
-import uuid
 import pathlib
+import uuid
 
-from django.db import models
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.db import models
 from django.utils import timezone
 
 
 class CommonDataMixin(models.Model):
+
     # QUESTION: Do we need created/modified for all models?
+
     date_created = models.DateTimeField(default=timezone.now)
     date_modified = models.DateTimeField(default=timezone.now)
 
@@ -89,7 +91,10 @@ class Individual(CommonDataMixin, models.Model):
         # TODO: Add documentation.
 
         if not isinstance(individuals, (list, models.QuerySet)):
-            raise TypeError(f"Argument 'individuals' must be of type list.")
+            raise TypeError(
+                f"Argument 'individuals' must be of type list or QuerySet. "
+                f"Received {type(individuals)}."
+            )
 
         if not individuals:
             return []
@@ -102,10 +107,10 @@ class Individual(CommonDataMixin, models.Model):
             pks = []
             for name in individuals:
                 try:
-                    obj = cls.objects.get(name=name, user=user)
+                    pk = cls.objects.get(name=name, user=user).pk
                 except cls.DoesNotExist:
-                    obj = None
-                pks.add(obj.pk)
+                    pk = None
+                pks.add(pk)
             return pks
         else:
             raise TypeError(
@@ -117,10 +122,28 @@ class SourceManager(models.Manager):
     def get_queryset(self):
         return super().get_queryset()
 
-    def get_or_create(self, user, name, individuals):
+    def get_or_create(self, user, name, individuals, extra_data=None):
+        """ Overwrites the QuerySet.get_or_create() function:
+        via https://github.com/django/django/blob/master/django/db/models/query.py#L536
+        """
 
-        # TODO: Add documentation.
+        source = self.get(user, name, individuals)
 
+        if source:
+            return source
+
+        return self.create(user, name, individuals, extra_data)
+
+    def get(self, user, name, individuals):
+        """
+        Overwrites the QuerySet.get() function:
+        via https://github.com/django/django/blob/master/django/db/models/query.py#L396
+
+        Returns a Source with a specific set of Individuals. """
+
+        # Compiles a list of Sources that match the target Source name and
+        # user. Filters the list down by comparing the number of Individuals in
+        # each matching Source to the target Source.
         sources = (
             self.get_queryset()
             .filter(name=name, user=user)
@@ -128,6 +151,13 @@ class SourceManager(models.Manager):
             .filter(count=len(individuals))
         )
 
+        # Compiles a set of primary keys of the target Souce Individuals.
+        # Compares them against a set from every matching Source. The first
+        # Source with an idential Individual primary key set is returned.
+        #
+        # Seeing as the uniquness of a Source to its Individuals is enforced
+        # with the Source.validate_unique_together() method, we can be sure the
+        # first match is the only match.
         if sources:
             new_pks = Individual.get_pks(user, individuals)
             for source in sources:
@@ -135,9 +165,22 @@ class SourceManager(models.Manager):
                 if source_pks == new_pks:
                     return source
 
+        return None
+
+    def create(self, user, name, individuals, extra_data=None):
+        """ Overwrites the QuerySet.create() function:
+        via https://github.com/django/django/blob/master/django/db/models/query.py#L423
+
+        Creates a Source with a specific set of Individuals. """
+
         individuals = Individual.objects.get_or_create(user, individuals)
 
-        source = self.get_queryset().create(name=name, user=user)
+        source = self.model(name=name, user=user, **extra_data)
+
+        # Need to call .save() here for two reasons:
+        # 1. An id is needed before a m2m relationshop can be created.
+        # 2. The .create() method has been overwritten by this one.
+        source.save(force_insert=True, using=self.db)
         source.individuals.set(individuals)
         source.save()
 
@@ -153,8 +196,8 @@ class Source(CommonDataMixin, models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True)
     name = models.CharField(max_length=256, blank=True)
     individuals = models.ManyToManyField(Individual, blank=True)
-    url = models.URLField(max_length=256, blank=True)
-    date = models.DateField(null=True, blank=True)
+    url = models.TextField(blank=True)
+    date = models.CharField(max_length=256, blank=True)
     notes = models.TextField(blank=True)
 
     objects = SourceManager()
@@ -174,31 +217,41 @@ class Source(CommonDataMixin, models.Model):
 
     @staticmethod
     def validate_unique_together(user, name, individuals, source_pk=None):
-        """ A Source may have multiple individuals. But two sources cannot have
-        the same set of individuals.
+        """ A Source may have a set Individuals. But no two sources can have
+        the same set of Individuals.
 
-        NOTE: Field validation must be done at the form/serializer level
-        because of the way Django handles many-to-many relationships. Primary
-        keys are needed to perform the Model.clean() method when validating a
-        unique together between a field and a many-to-many relationship. The
-        following validation methods **must** be called before any database
-        transaction. """
+        Field validation must be done at the form/serializer level because of
+        the way Django handles many-to-many relationships. Primary keys are
+        needed to perform the Model.clean() method when validating a unique
+        together between a field and a many-to-many relationship. The following
+        validation methods **must** be called before any database transaction.
+        """
 
-        # TODO: Add documentation.
-
+        # Compiles a list of Sources that match the target Source name and user.
         sources = Source.objects.filter(name=name, user=user)
 
+        # In the case where a Source is being updated, we remove it from the
+        # list of matches. Otherwise it would raise a ValidationError if the
+        # Source's Individuals are not part of the data being updated. It would
+        # find a Source with the same user, name and set of Individuals without
+        # realizing it had just found the target Source.
         if source_pk:
             sources = sources.exclude(pk=source_pk)
 
-        sources = (
-            sources.filter(name=name, user=user)
-            .annotate(count=models.Count("individuals"))
-            .filter(count=len(individuals))
+        # Filters the list down by comparing the number of Individuals in each
+        # matching Source to the target Source.
+        sources = sources.annotate(count=models.Count("individuals")).filter(
+            count=len(individuals)
         )
 
         if not sources:
             return
+
+        # Compiles a set of primary keys of the target Souce Individuals.
+        # Compares them against a set from every matching Source. A
+        # ValidationError is raised if any of existing Source Individual
+        # primary key sets are idential to the target Source's Individual
+        # primary key set.
 
         new_pks = Individual.get_pks(user, individuals)
 

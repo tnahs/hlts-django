@@ -2,16 +2,16 @@ from django import forms
 from django.contrib import admin
 from django.core.exceptions import ValidationError
 
-from . import models
+from .models import Collection, Individual, Node, Origin, Source, Tag
 
 
-@admin.register(models.Origin)
+@admin.register(Origin)
 class OriginAdmin(admin.ModelAdmin):
     readonly_fields = ("date_created", "date_modified")
     search_fields = ("name",)
 
 
-@admin.register(models.Individual)
+@admin.register(Individual)
 class IndividualAdmin(admin.ModelAdmin):
     readonly_fields = ("date_created", "date_modified")
     filter_horizontal = ("aka",)
@@ -20,7 +20,7 @@ class IndividualAdmin(admin.ModelAdmin):
 
 class SourceAdminForm(forms.ModelForm):
     def clean(self):
-        """ See apps.nodes.models.Source """
+        """ See apps.nodes.Source """
 
         pk = self.instance.pk
         user = self.cleaned_data.get("user")
@@ -35,16 +35,14 @@ class SourceAdminForm(forms.ModelForm):
             self.add_error("individuals", error)
 
         try:
-            models.Source.validate_unique_together(
-                user, name, individuals, source_pk=pk
-            )
+            Source.validate_unique_together(user, name, individuals, source_pk=pk)
         except ValidationError as error:
             raise forms.ValidationError(error.message)
 
         return self.cleaned_data
 
 
-@admin.register(models.Source)
+@admin.register(Source)
 class SourceAdmin(admin.ModelAdmin):
 
     form = SourceAdminForm
@@ -54,17 +52,17 @@ class SourceAdmin(admin.ModelAdmin):
     search_fields = ("name",)
 
 
-@admin.register(models.Tag)
+@admin.register(Tag)
 class TagAdmin(admin.ModelAdmin):
     readonly_fields = ("date_created", "date_modified")
 
 
-@admin.register(models.Collection)
+@admin.register(Collection)
 class CollectionAdmin(admin.ModelAdmin):
     readonly_fields = ("date_created", "date_modified")
 
 
-@admin.register(models.Node)
+@admin.register(Node)
 class NodeAdmin(admin.ModelAdmin):
     fieldsets = (
         (

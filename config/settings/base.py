@@ -1,7 +1,6 @@
+import datetime
 import os
 import pathlib
-import datetime
-
 
 SITE_ROOT = pathlib.Path(__file__).parent.parent.parent
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -63,7 +62,6 @@ TEMPLATES = [
         },
     }
 ]
-
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
