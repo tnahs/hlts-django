@@ -13,6 +13,11 @@ import pytest
 #     with django_db_blocker.unblock():
 #         management.call_command("loaddata", "fixtures/dev_data.json")
 
+# TODO:
+# 1. Each list view returns a proper response.
+# 2. Each detail view returns a proper response.
+# 3. Via Client each Serializer creates and updates expectedly.
+
 
 @pytest.mark.django_db
 class TestApi:

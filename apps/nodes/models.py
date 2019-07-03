@@ -1,10 +1,27 @@
+from __future__ import annotations
+# https://stackoverflow.com/a/49872353
+
 import pathlib
 import uuid
+from typing import List
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
+
+
+def _update_instance(instance, data: dict, attrs: list):
+    """ instance.attr = data.get("attr", instance.attr) """
+
+    # TODO: Rework this method!
+
+    for attr in attrs:
+        value_original = getattr(instance, attr)
+        value_new = data.get(attr, value_original)
+        setattr(instance, attr, value_new)
+
+    return instance
 
 
 class CommonDataMixin(models.Model):
@@ -21,6 +38,10 @@ class CommonDataMixin(models.Model):
         return self.__str__()
 
     def save(self, *args, **kwargs):
+        # FIXME If the date_modified it set to a specific date at creation
+        # time, it is immediately replaced when the .save() method is called.
+        # We want to be able to set the date_modified time without affecting it
+        # when .save() is called....
         self.date_modified = timezone.now()
         super().save(*args, **kwargs)
 
@@ -29,37 +50,67 @@ class IndividualManager(models.Manager):
     def get_queryset(self):
         return super().get_queryset()
 
-    def get_or_create(self, user, individuals):
+    def bulk_get_or_create(self, user, individuals):
 
-        # TODO: Revisit and doucment...
+        individuals = self.model.validate_type(individuals)
 
-        if not isinstance(individuals, (list, models.QuerySet)):
-            raise TypeError(
-                f"Argument 'individuals' must be of type list or QuerySet. "
-                f"Received {type(individuals)}."
-            )
+        # Case List[int]:
+        # ---------------------------------------------------------------------
+        # Individual were passed as a list of primary keys. Gets and returns.
+        #
+        # Case List[str]:
+        # ---------------------------------------------------------------------
+        # Individuals were passed as a list of (presumably) Individual names.
+        # Gets/creates and returns.
+        #
+        # Case List[self.model]:
+        # ---------------------------------------------------------------------
+        # Individuals were passed as a list of Individual objects. Returns.
+        #
+        # NOTE: This method accomidates a mixed list of Individual pks, names
+        # and objects. Not sure if Django allows or supports mixing model
+        # objects with other types of data.
 
-        if not individuals:
-            return []
+        individual_objs = []
 
-        if isinstance(individuals[0], self.model):
-            [i.save() for i in individuals]
-            return individuals
-        elif isinstance(individuals[0], int):
-            return [self.get(pk=pk, user=user) for pk in individuals]
-        elif isinstance(individuals[0], str):
-            objs = []
-            for name in individuals:
+        for individual in individuals:
+
+            if isinstance(individual, int):
+                obj = super().get(pk=individual, user=user)
+
+            elif isinstance(individual, str):
                 try:
-                    obj = self.get(name=name, user=user)
+                    obj = super().get(name=individual, user=user)
                 except self.model.DoesNotExist:
-                    obj = self.create(name=name, user=user)
-                objs.add(obj)
-            return objs
-        else:
-            raise TypeError(
-                f"Unrecognized type {type(individuals[0])} in {individuals}."
-            )
+                    obj = super().create(name=individual, user=user)
+
+            elif isinstance(individual, self.model):
+                obj = individual
+
+            individual_objs.append(obj)
+
+        return individual_objs
+
+    def create(self, data):
+
+        user = data.get("user")
+
+        aka = data.pop("aka")
+
+        obj = super().create(**data)
+
+        aka_objs = self.bulk_get_or_create(user, aka)
+        obj.aka.set(aka_objs)
+        obj.save()
+
+        return obj
+
+    def update(self, instance, data):
+
+        instance = _update_instance(instance, data, ["name", "first_name", "last_name"])
+        instance.save()
+
+        return instance
 
 
 class Individual(CommonDataMixin, models.Model):
@@ -92,6 +143,23 @@ class Individual(CommonDataMixin, models.Model):
         return self.name
 
     @classmethod
+    def validate_type(cls, items: List[int, str, Individual]):
+
+        if not items:
+            items = []
+
+        if not isinstance(items, (list, models.QuerySet)):
+            raise TypeError(
+                f"Individuals must be of type 'list' or 'QuerySet'. Received {type(items)}."
+            )
+
+        if len(items):
+            if not isinstance(items[0], (int, str, cls)):
+                raise TypeError(f"Unrecognized type {type(items[0])} in {items}.")
+
+        return items
+
+    @classmethod
     def get_pks(cls, user, individuals):
         """ Returns a set of primary keys from a list of various types of
         Individuals. Types include integers, model instances and strings.
@@ -100,27 +168,17 @@ class Individual(CommonDataMixin, models.Model):
         checking the uniqueness between one set of Source/Individuals and
         another."""
 
-        if not isinstance(individuals, (list, models.QuerySet)):
-            raise TypeError(
-                f"Argument 'individuals' must be of type list or QuerySet. "
-                f"Received {type(individuals)}."
-            )
+        individuals = cls.validate_type(individuals)
 
-        if not individuals:
-            return []
-
-        # Individuals were passed as a list of primary keys. Return unchanged.
-        if isinstance(individuals[0], int):
-            return individuals
-
-        # Individuals were passed as a list of Individual instances. Compile a
-        # set of their primary keys and return.
-        elif isinstance(individuals[0], cls):
-            return {i.pk for i in individuals}
-
+        # Case List[int]:
+        # ---------------------------------------------------------------------
+        # Individual were passed as a list of primary keys. Returns unchanged.
+        #
+        # Case List[str]:
+        # ---------------------------------------------------------------------
         # Individuals were passed as a list of (presumably) Individual names.
-        # Compile a list of all existing Individuals that match the list of
-        # name. If no Individual exists (for this current user) then append
+        # Compiles a list of all existing Individuals that match the list of
+        # name. If no Individual exists (for this current user) then appends
         # None to the list in its place. This is done to make sure that if the
         # user is creating a Source that has the same name as an existing
         # Source but a slighlty different set of Individuals the validation
@@ -140,43 +198,67 @@ class Individual(CommonDataMixin, models.Model):
         # object. Otherwise the two Sources would be considered the same and
         # validation would misfire, returning the existing Source rather than
         # creating a new Source with a different set of Individuals.
-        elif isinstance(individuals[0], str):
-            pks = []
-            for name in individuals:
+        #
+        # Case List[obj]:
+        # ---------------------------------------------------------------------
+        # Individuals were passed as a list of Individual objects. Compiles a
+        # set of their primary keys and returns.
+        #
+        # NOTE: This method accomidates a mixed list of Individual pks, names
+        # and objects. Not sure if Django allows or supports mixing model
+        # objects with other types of data.
+
+        individual_pks = []
+
+        for individual in individuals:
+
+            if isinstance(individual, int):
+                pk = individual
+
+            elif isinstance(individual, str):
                 try:
-                    obj = cls.objects.get(name=name, user=user)
-                    pks.append(obj.pk)
-                except cls.DoesNotExist:
-                    pks.append(None)
-            return pks
-        else:
-            raise TypeError(
-                f"Unrecognized type {type(individuals[0])} in {individuals}."
-            )
+                    obj = cls.objects.get(name=individual, user=user)
+                    pk = obj.pk
+                except cls.model.DoesNotExist:
+                    pk = None
+
+            elif isinstance(individual, cls):
+                pk = individual.pk
+
+            individual_pks.append(pk)
+
+        return individual_pks
 
 
 class SourceManager(models.Manager):
     def get_queryset(self):
         return super().get_queryset()
 
-    def get_or_create(self, user, name, individuals, extra_data=None):
+    def get_or_create(self, data):
         """ Overwrites the QuerySet.get_or_create() function:
         via https://github.com/django/django/blob/master/django/db/models/query.py#L536
         """
 
-        source = self.get(user, name, individuals)
+        source = self.get(data)
 
         if source:
             return source
 
-        return self.create(user, name, individuals, extra_data)
+        return self.create(data)
 
-    def get(self, user, name, individuals):
+    def get(self, data):
         """
         Overwrites the QuerySet.get() function:
         via https://github.com/django/django/blob/master/django/db/models/query.py#L396
-
         Returns a Source with a specific set of Individuals. """
+
+        # TODO: Cleanup this method.
+
+        user = data.get("user", None)
+        name = data.get("name", None)
+        individuals = data.get("individuals", None)
+
+        individuals = Individual.validate_type(individuals)
 
         # Compiles a list of Sources that match the target Source name and
         # user. Filters the list down by comparing the number of Individuals in
@@ -204,24 +286,35 @@ class SourceManager(models.Manager):
 
         return None
 
-    def create(self, user, name, individuals, extra_data=None):
+    def create(self, data):
         """ Overwrites the QuerySet.create() function:
         via https://github.com/django/django/blob/master/django/db/models/query.py#L423
-
         Creates a Source with a specific set of Individuals. """
 
-        individuals = Individual.objects.get_or_create(user, individuals)
+        # TODO: Need to be able to create with all fields.
 
-        source = self.model(name=name, user=user, **extra_data)
+        user = data.get("user", None)
+        individuals = data.pop("individuals", None)
+        individual_objs = Individual.objects.bulk_get_or_create(user, individuals)
 
-        # Need to call .save() here for two reasons:
-        # 1. An id is needed before a m2m relationshop can be created.
-        # 2. The .create() method has been overwritten by this one.
-        source.save(force_insert=True, using=self.db)
-        source.individuals.set(individuals)
-        source.save()
+        obj = super().create(**data)
+        obj.individuals.set(individual_objs)
+        obj.save()
 
-        return source
+        return obj
+
+    def update(self, instance, data):
+
+        user = data.get("user", None)
+        individuals = data.get("individuals")
+        individual_objs = Individual.objects.bulk_get_or_create(user, individuals)
+
+        instance = _update_instance(instance, data, ["name", "url", "date", "notes"])
+
+        instance.individuals.set(individual_objs)
+        instance.save()
+
+        return instance
 
 
 class Source(CommonDataMixin, models.Model):
@@ -254,15 +347,27 @@ class Source(CommonDataMixin, models.Model):
 
     @staticmethod
     def validate_unique_together(user, name, individuals, source_pk=None):
-        """ A Source may have a set Individuals. But no two sources can have
-        the same set of Individuals.
+        """ Validates that no two sources have the same set of Individuals.
 
-        Field validation must be done at the form/serializer level because of
-        the way Django handles many-to-many relationships. Primary keys are
-        needed to perform the Model.clean() method when validating a unique
-        together between a field and a many-to-many relationship. The following
-        validation methods **must** be called before any database transaction.
-        """
+        Raises a bare ValidationError. It is expected that this error is caught
+        and a message is appeneded to it at the form/serializer level.
+
+        This validator *must* be run anytime a Source is created or updated. """
+
+        if not individuals:
+            individuals = []
+
+        if not isinstance(individuals, (list, models.QuerySet)):
+            raise TypeError(
+                f"Argument 'individuals' must be of type list or QuerySet. "
+                f"Received {type(individuals)}."
+            )
+
+        if len(individuals):
+            if not isinstance(individuals[0], (int, str, Individual)):
+                raise TypeError(
+                    f"Unrecognized type {type(individuals[0])} in {individuals}."
+                )
 
         # Compiles a list of Sources that match the target Source name and user.
         sources = Source.objects.filter(name=name, user=user)
@@ -295,9 +400,17 @@ class Source(CommonDataMixin, models.Model):
         for source in sources:
             source_pks = {i.pk for i in source.individuals.all()}
             if source_pks == new_pks:
-                raise ValidationError(
-                    f"Source '{name}' with selected individuals already exists."
-                )
+                # Target Source already exists with the selected individuals.
+                raise ValidationError()
+
+
+class TagManager(models.Manager):
+    def update(self, instance, data):
+
+        instance = _update_instance(instance, data, ["name"])
+        instance.save()
+
+        return instance
 
 
 class Tag(CommonDataMixin, models.Model):
@@ -309,11 +422,22 @@ class Tag(CommonDataMixin, models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True)
     name = models.CharField(max_length=64)
 
+    objects = TagManager()
+
     class Meta:
         unique_together = ("user", "name")
 
     def __str__(self):
         return f"<{self.__class__.__name__}:{self.name}>"
+
+
+class CollectionManager(models.Manager):
+    def update(self, instance, data):
+
+        instance = _update_instance(instance, data, ["name", "color", "description"])
+        instance.save()
+
+        return instance
 
 
 class Collection(CommonDataMixin, models.Model):
@@ -327,11 +451,22 @@ class Collection(CommonDataMixin, models.Model):
     color = models.CharField(max_length=32, blank=True)
     description = models.TextField(blank=True)
 
+    objects = CollectionManager()
+
     class Meta:
         unique_together = ("user", "name")
 
     def __str__(self):
         return f"<{self.__class__.__name__}:{self.name}>"
+
+
+class OriginManager(models.Manager):
+    def update(self, instance, data):
+
+        instance = _update_instance(instance, data, ["name"])
+        instance.save()
+
+        return instance
 
 
 class Origin(CommonDataMixin, models.Model):
@@ -341,7 +476,9 @@ class Origin(CommonDataMixin, models.Model):
     )
 
     id = models.UUIDField(default=uuid.uuid4, primary_key=True)
-    name = models.CharField(max_length=128)
+    name = models.CharField(max_length=64)
+
+    objects = OriginManager()
 
     class Meta:
         unique_together = ("user", "name")
@@ -398,6 +535,128 @@ class MediaManager:
             return "misc"
 
 
+class NodeManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset()
+
+    def create(self, data):
+
+        # TODO: Why does sending null not fire-off the default value in model?
+        # if not data.get("date_created"):
+        #     data.pop("date_created")
+
+        # if not data.get("date_modified"):
+        #     data.pop("date_modified")
+
+        user = data.pop("user", None)
+        source = data.pop("source", None)
+        tags = data.pop("tags", None)
+        collections = data.pop("collections", None)
+        origin = data.pop("origin", None)
+        related = data.pop("related", None)
+
+        # TODO: Document here explicitly what's being passed as data
+        # after values are popped out.
+
+        obj = super().create(user=user, **data)
+
+        if source and any(source.values()):
+            self._set_source(obj, source, user)
+
+        if tags:
+            self._set_tags(obj, tags, user)
+
+        if collections:
+            self._set_collections(obj, collections, user)
+
+        if origin:
+            self._set_origin(obj, origin, user)
+
+        if related:
+            obj.related.set(related)
+
+        obj.save()
+
+        return obj
+
+    def update(self, instance, data):
+
+        user = data.pop("user", None)
+        source = data.pop("source", None)
+        tags = data.pop("tags", None)
+        collections = data.pop("collections", None)
+        origin = data.pop("origin", None)
+        related = data.pop("related", None)
+
+        instance = _update_instance(
+            instance,
+            data,
+            [
+                "text",
+                "media",
+                "notes",
+                "in_trash",
+                "is_starred",
+                "date_created",
+                "date_modified",
+            ],
+        )
+
+        if source and any(source.values()):
+            self._set_source(instance, source, user)
+
+        if tags:
+            self._set_tags(instance, tags, user)
+
+        if collections:
+            self._set_collections(instance, collections, user)
+
+        if origin:
+            self._set_origin(instance, origin, user)
+
+        if related:
+            instance.related.set(related)
+
+        instance.save()
+
+        return instance
+
+    def _set_source(self, _obj, source, user):
+        source["user"] = user
+        source_obj = Source.objects.get_or_create(source)
+        _obj.source = source_obj
+
+    def _set_tags(self, _obj, tags, user):
+
+        tags = set(tags)
+
+        tag_objs = []
+        for name in tags:
+            tag_obj, created = Tag.objects.get_or_create(user=user, name=name)
+            tag_objs.append(tag_obj)
+
+        _obj.tags.set(tag_objs)
+
+    def _set_collections(self, _obj, collections, user):
+
+        collections = set(collections)
+
+        collection_objs = []
+        for name in collections:
+            collection_obj, created = Collection.objects.get_or_create(
+                user=user, name=name
+            )
+            collection_objs.append(collection_obj)
+
+        _obj.collections.set(collection_objs)
+
+    def _set_origin(self, _obj, origin, user):
+
+        origin_obj, created = Origin.objects.get_or_create(user=user, name=origin)
+
+        _obj.origin = origin_obj
+
+
 class Node(CommonDataMixin, models.Model):
 
     user = models.ForeignKey(
@@ -428,6 +687,8 @@ class Node(CommonDataMixin, models.Model):
     auto_related = models.ManyToManyField(
         "self", blank=True, related_name="auto_related"
     )
+
+    objects = NodeManager()
 
     def __str__(self):
         return f"<{self.__class__.__name__}:{self.display_name}>"

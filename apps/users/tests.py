@@ -49,7 +49,7 @@ class TestUser:
         assert user.dir_documents == user.dir_media / "documents"
         assert user.dir_misc == user.dir_media / "misc"
 
-    def test_create_user_minimum_requirements(self):
+    def test_create_user_minimum(self):
         """ Test create user with e-mail and password only. """
 
         user = self.model.objects.create_user(email=self.email, password=self.password)
@@ -77,7 +77,7 @@ class TestUser:
         assert isinstance(user.__repr__(), str)
         assert isinstance(user.display_name, str)
 
-    def test_create_superuser_minimum_requirements(self):
+    def test_create_superuser_minimum(self):
         """ Test create user with e-mail and password only. """
 
         user = self.model.objects.create_superuser(
