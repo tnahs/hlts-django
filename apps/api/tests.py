@@ -1,5 +1,11 @@
 import pytest
 
+# from rest_framework.test import RequestsClient
+
+# client = RequestsClient()
+# response = client.get('http://testserver/users/')
+# assert response.status_code == 200
+
 # from django.core import management
 
 # @pytest.fixture(scope="session")

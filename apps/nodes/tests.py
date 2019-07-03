@@ -141,7 +141,7 @@ class TestNode:
         return collection_objs
 
     def test_create(self, user):
-        """ Test full creation of a Node object. """
+        """ Test full creation of a Node. """
 
         node = Node.objects.create(user=user, **self.fields)
 

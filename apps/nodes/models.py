@@ -31,8 +31,13 @@ class IndividualManager(models.Manager):
 
     def get_or_create(self, user, individuals):
 
-        if not isinstance(individuals, list):
-            raise TypeError(f"Argument 'individuals' must be of type list.")
+        # TODO: Revisit and doucment...
+
+        if not isinstance(individuals, (list, models.QuerySet)):
+            raise TypeError(
+                f"Argument 'individuals' must be of type list or QuerySet. "
+                f"Received {type(individuals)}."
+            )
 
         if not individuals:
             return []
@@ -58,8 +63,6 @@ class IndividualManager(models.Manager):
 
 
 class Individual(CommonDataMixin, models.Model):
-    """ Individual.aka handles name variants i.e. 'John Dough', 'J. Dough'
-    and 'Dough, John J.' would be considered the same individual. """
 
     user = models.ForeignKey(
         get_user_model(), related_name="individuals", on_delete=models.CASCADE
@@ -69,6 +72,9 @@ class Individual(CommonDataMixin, models.Model):
     name = models.CharField(max_length=256)
     first_name = models.CharField(max_length=256, blank=True)
     last_name = models.CharField(max_length=256, blank=True)
+
+    """ Individual.aka handles name variants i.e. 'John Dough', 'J. Dough'
+    and 'Dough, John J.' would be considered the same individual. """
     aka = models.ManyToManyField("self", blank=True)
 
     objects = IndividualManager()
@@ -87,8 +93,12 @@ class Individual(CommonDataMixin, models.Model):
 
     @classmethod
     def get_pks(cls, user, individuals):
+        """ Returns a set of primary keys from a list of various types of
+        Individuals. Types include integers, model instances and strings.
 
-        # TODO: Add documentation.
+        Used in Source.ojects.get() and Source.validate_unique_together() for
+        checking the uniqueness between one set of Source/Individuals and
+        another."""
 
         if not isinstance(individuals, (list, models.QuerySet)):
             raise TypeError(
@@ -99,18 +109,45 @@ class Individual(CommonDataMixin, models.Model):
         if not individuals:
             return []
 
+        # Individuals were passed as a list of primary keys. Return unchanged.
         if isinstance(individuals[0], int):
             return individuals
+
+        # Individuals were passed as a list of Individual instances. Compile a
+        # set of their primary keys and return.
         elif isinstance(individuals[0], cls):
             return {i.pk for i in individuals}
+
+        # Individuals were passed as a list of (presumably) Individual names.
+        # Compile a list of all existing Individuals that match the list of
+        # name. If no Individual exists (for this current user) then append
+        # None to the list in its place. This is done to make sure that if the
+        # user is creating a Source that has the same name as an existing
+        # Source but a slighlty different set of Individuals the validation
+        # will not misfire. i.e.
+        #
+        #    Existing Source and Individuals:
+        #    Source: "The Source"
+        #    Individuals: ("John Doe", "Jane Doe")
+        #
+        #    Existing Source with one new Individual:
+        #    Source: "The Source"
+        #    Individuals: ("John Doe", "Jane Doe", "Jinny Doe")
+        #              == ("John Doe", "Jane Doe", None)
+        #              != ("John Doe", "Jane Doe")
+        #
+        # 'None' is appended as a placeholder for a not yet created Individual
+        # object. Otherwise the two Sources would be considered the same and
+        # validation would misfire, returning the existing Source rather than
+        # creating a new Source with a different set of Individuals.
         elif isinstance(individuals[0], str):
             pks = []
             for name in individuals:
                 try:
-                    pk = cls.objects.get(name=name, user=user).pk
+                    obj = cls.objects.get(name=name, user=user)
+                    pks.append(obj.pk)
                 except cls.DoesNotExist:
-                    pk = None
-                pks.add(pk)
+                    pks.append(None)
             return pks
         else:
             raise TypeError(

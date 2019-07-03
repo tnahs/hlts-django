@@ -44,7 +44,7 @@ UserField = serializers.SlugRelatedField(
 
 
 class PrimaryKeyToUserField(serializers.PrimaryKeyRelatedField):
-    """ A field requiring a user for retrieveing, appending objects based on
+    """ A field requiring a user for retrieveing and appending objects based on
     their primary keys. """
 
     def get_queryset(self):

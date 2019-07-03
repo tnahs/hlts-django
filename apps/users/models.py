@@ -7,15 +7,12 @@ from django.db import models
 
 
 class UserManager(BaseUserManager):
-    """Custom user model manager where email is the unique identifiers for
+    """ Custom User manager where e-mail is the unique identifier for
     authentication instead of usernames. """
 
     use_in_migrations = True
 
     def _create_user(self, email, password, **extra_fields):
-
-        if not email:
-            raise ValueError("Email address is required.")
 
         # via BaseUserManager
         email = self.normalize_email(email)
@@ -48,7 +45,8 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser, PermissionsMixin):
-    """ via https://docs.djangoproject.com/en/2.2/topics/auth/customizing/
+    """
+    via https://docs.djangoproject.com/en/2.2/topics/auth/customizing/
     https://github.com/tmm/django-username-email/blob/master/cuser/models.py
     https://testdriven.io/blog/django-custom-user-model/ """
 
@@ -98,11 +96,15 @@ class User(AbstractBaseUser, PermissionsMixin):
     # def set_password(): ... via AbstractBaseUser
     # def check_password(): ... via AbstractBaseUser
 
+    # TODO: Still sorting out where to do validation...
+    # def save(self, *args, **kwargs):
+    #     self.full_clean()
+    #     super().save(*args, **kwargs)
+
     # via AbstractUser
     def clean(self):
-        # TODO: This does not seem to be called by the model but rather the
-        # admin form. Do some testing to verify and check if we *need* it...
-        super().clean()
+        # super().clean() isn't called here because AbstractBaseUser normalizes
+        # using the .normalize_username() method instead of .normalize_email().
         self.email = self.__class__.objects.normalize_email(self.email)
 
     @property
