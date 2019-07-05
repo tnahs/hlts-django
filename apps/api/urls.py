@@ -9,7 +9,7 @@ from . import views
 class SimpleRouter(routers.SimpleRouter):
     """ Re-configured for optional trailing slashes.
 
-    TODO: This still seems to add oddly on a DELETE request.
+    TODO: This still seems to act oddly on a DELETE request.
     """
 
     def __init__(self):

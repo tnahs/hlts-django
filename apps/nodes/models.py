@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 # https://stackoverflow.com/a/49872353
 
 import pathlib
@@ -11,25 +12,10 @@ from django.db import models
 from django.utils import timezone
 
 
-def _update_instance(instance, data: dict, attrs: list):
-    """ instance.attr = data.get("attr", instance.attr) """
-
-    # TODO: Rework this method!
-
-    for attr in attrs:
-        value_original = getattr(instance, attr)
-        value_new = data.get(attr, value_original)
-        setattr(instance, attr, value_new)
-
-    return instance
-
-
 class CommonDataMixin(models.Model):
 
-    # QUESTION: Do we need created/modified for all models?
-
     date_created = models.DateTimeField(default=timezone.now)
-    date_modified = models.DateTimeField(default=timezone.now)
+    date_modified = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         abstract = True
@@ -38,12 +24,21 @@ class CommonDataMixin(models.Model):
         return self.__str__()
 
     def save(self, *args, **kwargs):
-        # FIXME If the date_modified it set to a specific date at creation
-        # time, it is immediately replaced when the .save() method is called.
-        # We want to be able to set the date_modified time without affecting it
-        # when .save() is called....
-        self.date_modified = timezone.now()
+        if self.pk:
+            self.modified = timezone.now()
         super().save(*args, **kwargs)
+
+    @staticmethod
+    def update_fields(instance, data: dict, fields: list):
+        """ Sets instance fields to new value if new value exists. Runs:
+        instance.field = data.get(field, instance.field) on each field. """
+
+        for field in fields:
+            value_original = getattr(instance, field)
+            value_new = data.get(field, value_original)
+            setattr(instance, field, value_new)
+
+        return instance
 
 
 class IndividualManager(models.Manager):
@@ -91,23 +86,26 @@ class IndividualManager(models.Manager):
 
         return individual_objs
 
-    def create(self, data):
-
-        user = data.get("user")
+    def create(self, user, **data):
 
         aka = data.pop("aka")
-
-        obj = super().create(**data)
-
         aka_objs = self.bulk_get_or_create(user, aka)
+
+        obj = super().create(user=user, **data)
         obj.aka.set(aka_objs)
         obj.save()
 
         return obj
 
-    def update(self, instance, data):
+    def update(self, user, instance, **data):
 
-        instance = _update_instance(instance, data, ["name", "first_name", "last_name"])
+        fields = ["name", "first_name", "last_name"]
+
+        aka = data.pop("aka")
+        aka_objs = self.bulk_get_or_create(user, aka)
+
+        instance = self.update_fields(instance, data, fields)
+        instance.aka.set(aka_objs)
         instance.save()
 
         return instance
@@ -124,8 +122,14 @@ class Individual(CommonDataMixin, models.Model):
     first_name = models.CharField(max_length=256, blank=True)
     last_name = models.CharField(max_length=256, blank=True)
 
-    """ Individual.aka handles name variants i.e. 'John Dough', 'J. Dough'
-    and 'Dough, John J.' would be considered the same individual. """
+    # Name variations are handled by 'aka` i.e.
+    #
+    #  John Dough
+    #  Dough, John
+    #  J. Dough
+    #  ...
+    #
+    # If related, all variants would be considered the same individual.
     aka = models.ManyToManyField("self", blank=True)
 
     objects = IndividualManager()
@@ -153,9 +157,9 @@ class Individual(CommonDataMixin, models.Model):
                 f"Individuals must be of type 'list' or 'QuerySet'. Received {type(items)}."
             )
 
-        if len(items):
-            if not isinstance(items[0], (int, str, cls)):
-                raise TypeError(f"Unrecognized type {type(items[0])} in {items}.")
+        for item in items:
+            if not isinstance(item, (int, str, cls)):
+                raise TypeError(f"Unrecognized type {type(item)} in {items}.")
 
         return items
 
@@ -219,7 +223,7 @@ class Individual(CommonDataMixin, models.Model):
                 try:
                     obj = cls.objects.get(name=individual, user=user)
                     pk = obj.pk
-                except cls.model.DoesNotExist:
+                except cls.DoesNotExist:
                     pk = None
 
             elif isinstance(individual, cls):
@@ -234,30 +238,23 @@ class SourceManager(models.Manager):
     def get_queryset(self):
         return super().get_queryset()
 
-    def get_or_create(self, data):
+    def get_or_create(self, user, **data):
         """ Overwrites the QuerySet.get_or_create() function:
         via https://github.com/django/django/blob/master/django/db/models/query.py#L536
         """
 
-        source = self.get(data)
+        source = self.get(user, **data)
 
         if source:
             return source
 
-        return self.create(data)
+        return self.create(user, **data)
 
-    def get(self, data):
-        """
-        Overwrites the QuerySet.get() function:
-        via https://github.com/django/django/blob/master/django/db/models/query.py#L396
-        Returns a Source with a specific set of Individuals. """
+    def get(self, user, **data):
+        """ Returns a Source with a specific set of Individuals. """
 
-        # TODO: Cleanup this method.
-
-        user = data.get("user", None)
         name = data.get("name", None)
         individuals = data.get("individuals", None)
-
         individuals = Individual.validate_type(individuals)
 
         # Compiles a list of Sources that match the target Source name and
@@ -286,31 +283,27 @@ class SourceManager(models.Manager):
 
         return None
 
-    def create(self, data):
-        """ Overwrites the QuerySet.create() function:
-        via https://github.com/django/django/blob/master/django/db/models/query.py#L423
-        Creates a Source with a specific set of Individuals. """
+    def create(self, user, **data):
 
-        # TODO: Need to be able to create with all fields.
-
-        user = data.get("user", None)
         individuals = data.pop("individuals", None)
+        individuals = Individual.validate_type(individuals)
         individual_objs = Individual.objects.bulk_get_or_create(user, individuals)
 
-        obj = super().create(**data)
+        obj = super().create(user=user, **data)
         obj.individuals.set(individual_objs)
         obj.save()
 
         return obj
 
-    def update(self, instance, data):
+    def update(self, user, instance, **data):
 
-        user = data.get("user", None)
+        fields = ["name", "color", "description"]
+
         individuals = data.get("individuals")
+        individuals = Individual.validate_type(individuals)
         individual_objs = Individual.objects.bulk_get_or_create(user, individuals)
 
-        instance = _update_instance(instance, data, ["name", "url", "date", "notes"])
-
+        instance = self.update_fields(instance, data, fields)
         instance.individuals.set(individual_objs)
         instance.save()
 
@@ -405,9 +398,14 @@ class Source(CommonDataMixin, models.Model):
 
 
 class TagManager(models.Manager):
-    def update(self, instance, data):
+    def create(self, user, **data):
+        return super().create(user=user, **data)
 
-        instance = _update_instance(instance, data, ["name"])
+    def update(self, user, instance, **data):
+
+        fields = ["name"]
+
+        instance = self.update_fields(instance, data, fields)
         instance.save()
 
         return instance
@@ -432,9 +430,14 @@ class Tag(CommonDataMixin, models.Model):
 
 
 class CollectionManager(models.Manager):
-    def update(self, instance, data):
+    def create(self, user, **data):
+        return super().create(user=user, **data)
 
-        instance = _update_instance(instance, data, ["name", "color", "description"])
+    def update(self, user, instance, **data):
+
+        fields = ["name", "color", "description"]
+
+        instance = self.update_fields(instance, data, fields)
         instance.save()
 
         return instance
@@ -461,9 +464,14 @@ class Collection(CommonDataMixin, models.Model):
 
 
 class OriginManager(models.Manager):
-    def update(self, instance, data):
+    def create(self, user, **data):
+        return super().create(user=user, **data)
 
-        instance = _update_instance(instance, data, ["name"])
+    def update(self, user, instance, **data):
+
+        fields = ["name"]
+
+        instance = self.update_fields(instance, data, fields)
         instance.save()
 
         return instance
@@ -539,24 +547,13 @@ class NodeManager(models.Manager):
     def get_queryset(self):
         return super().get_queryset()
 
-    def create(self, data):
+    def create(self, user, **data):
 
-        # TODO: Why does sending null not fire-off the default value in model?
-        # if not data.get("date_created"):
-        #     data.pop("date_created")
-
-        # if not data.get("date_modified"):
-        #     data.pop("date_modified")
-
-        user = data.pop("user", None)
         source = data.pop("source", None)
         tags = data.pop("tags", None)
         collections = data.pop("collections", None)
         origin = data.pop("origin", None)
         related = data.pop("related", None)
-
-        # TODO: Document here explicitly what's being passed as data
-        # after values are popped out.
 
         obj = super().create(user=user, **data)
 
@@ -579,28 +576,25 @@ class NodeManager(models.Manager):
 
         return obj
 
-    def update(self, instance, data):
+    def update(self, user, instance, **data):
 
-        user = data.pop("user", None)
+        fields = [
+            "text",
+            "media",
+            "notes",
+            "in_trash",
+            "is_starred",
+            "date_created",
+            "date_modified",
+        ]
+
         source = data.pop("source", None)
         tags = data.pop("tags", None)
         collections = data.pop("collections", None)
         origin = data.pop("origin", None)
         related = data.pop("related", None)
 
-        instance = _update_instance(
-            instance,
-            data,
-            [
-                "text",
-                "media",
-                "notes",
-                "in_trash",
-                "is_starred",
-                "date_created",
-                "date_modified",
-            ],
-        )
+        instance = self.update_fields(instance, data, fields)
 
         if source and any(source.values()):
             self._set_source(instance, source, user)
@@ -622,8 +616,7 @@ class NodeManager(models.Manager):
         return instance
 
     def _set_source(self, _obj, source, user):
-        source["user"] = user
-        source_obj = Source.objects.get_or_create(source)
+        source_obj = Source.objects.get_or_create(user, **source)
         _obj.source = source_obj
 
     def _set_tags(self, _obj, tags, user):
@@ -665,8 +658,8 @@ class Node(CommonDataMixin, models.Model):
 
     id = models.UUIDField(default=uuid.uuid4, primary_key=True)
 
-    # TODO: Validate that either text or media has a value.
     text = models.TextField(blank=True)
+    link = models.URLField(blank=True)
     media = models.FileField(upload_to=MediaManager.get_folder, blank=True)
 
     source = models.ForeignKey(Source, on_delete=models.CASCADE, null=True, blank=True)
@@ -682,7 +675,7 @@ class Node(CommonDataMixin, models.Model):
     related = models.ManyToManyField("self", blank=True)
 
     # Read-only
-    # auto_ocr = models.TextField(blank=True)
+    auto_ocr = models.TextField(blank=True)
     auto_tags = models.ManyToManyField(Tag, blank=True, related_name="auto_tagged")
     auto_related = models.ManyToManyField(
         "self", blank=True, related_name="auto_related"
@@ -696,13 +689,12 @@ class Node(CommonDataMixin, models.Model):
     @property
     def display_name(self):
 
-        # TODO: Clean this up.
-
         name = [self.node_type]
 
         if self.text:
             name.append(f"{self.text[:32].strip()}...")
-
+        if self.link:
+            name.append(f"{self.link[:32].strip()}...")
         if self.media:
             name.append(MediaManager.get_filename(self.media.name))
 
@@ -715,6 +707,8 @@ class Node(CommonDataMixin, models.Model):
 
         if self.text:
             _type.append("text")
+        if self.link:
+            _type.append("link")
         if self.media:
             _type.append(MediaManager.get_type(self.media.name))
 

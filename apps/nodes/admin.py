@@ -20,7 +20,7 @@ class IndividualAdmin(admin.ModelAdmin):
 
 class SourceAdminForm(forms.ModelForm):
     def clean(self):
-        """ See apps.nodes.Source """
+        """ See apps.nodes.models.Source """
 
         pk = self.instance.pk
         user = self.cleaned_data.get("user")
@@ -72,6 +72,7 @@ class NodeAdmin(admin.ModelAdmin):
                     "id",
                     "text",
                     "media",
+                    "link",
                     "source",
                     "notes",
                     "tags",
@@ -86,12 +87,26 @@ class NodeAdmin(admin.ModelAdmin):
         ),
         (
             "Read-only",
-            {"fields": ("date_created", "date_modified", "auto_tags", "auto_related")},
+            {
+                "fields": (
+                    "date_created",
+                    "date_modified",
+                    "auto_ocr",
+                    "auto_tags",
+                    "auto_related",
+                )
+            },
         ),
     )
 
     list_display = ("__str__", "source", "_tags", "_collections", "is_starred")
-    readonly_fields = ("date_created", "date_modified", "auto_tags", "auto_related")
+    readonly_fields = (
+        "date_created",
+        "date_modified",
+        "auto_tags",
+        "auto_related",
+        "auto_ocr",
+    )
     filter_horizontal = ("tags", "collections")
     autocomplete_fields = ("origin", "source")
 

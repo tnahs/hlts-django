@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from django.db.utils import IntegrityError
 from django.utils import timezone
 
-from .models import Collection, Individual, Node, Origin, Source, Tag
+from ..models import Collection, Individual, Node, Origin, Source, Tag
 
 
 # TODO:
@@ -163,6 +163,7 @@ class TestNode:
     id = "538b847e-9c14-11e9-a2a3-2a2ae2dbcce4"
     text = "Node text."
     media = "/path/to/media.png"
+    url = "http://node-url.com"
     source_name = "Test Source"
     source_individuals = ["Test Individual1", "Test Individual2"]
     notes = "Node notes."
@@ -174,9 +175,6 @@ class TestNode:
     # TODO: Create a dummy Node and relate it.
     related = []
     date_created = timezone.now().isoformat()
-    # TODO: Figure out how to set date_modified without the .save() method
-    # overwriting it.
-    # date_modified = timezone.now().isoformat()
 
     def test_create(self, user):
         """ Test full creation of a Node. """
@@ -186,6 +184,7 @@ class TestNode:
             "id": self.id,
             "text": self.text,
             "media": self.media,
+            "url": self.url,
             "source": {
                 "name": self.source_name,
                 "individuals": self.source_individuals,
@@ -217,7 +216,6 @@ class TestNode:
         assert node.is_starred == self.is_starred
         assert node.related.count() == len(self.related)
         assert node.date_created == self.date_created
-        # assert node.date_modified == self.date_modified
 
         # Test __str__ and __repr__ return strings.
         assert isinstance(node.__str__(), str)

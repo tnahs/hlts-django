@@ -5,39 +5,29 @@ from rest_framework.reverse import reverse
 from .models import Collection, Individual, Node, Origin, Source, Tag
 
 
-def _update_instance(instance, data: dict, attrs: list):
-    """ instance.attr = data.get("attr", instance.attr) """
+class MetadataMixin:
+    def _metadata(
+        self, obj, self_basename, connection_queryset, connection_basename, request
+    ):
+        self_view = f"{self_basename}-detail"
+        connection_view = f"{connection_basename}-detail"
 
-    for attr in attrs:
-        value_original = getattr(instance, attr)
-        value_new = data.get(attr, value_original)
-        setattr(instance, attr, value_new)
+        api_url = reverse(self_view, args=[obj.pk], request=request)
+        connections_count = connection_queryset.count()
+        connections = [
+            reverse(connection_view, args=[n.pk], request=request)
+            for n in connection_queryset
+        ]
 
-    return instance
-
-
-def _get_metadata(
-    obj, self_basename, connection_queryset, connection_basename, request
-):
-    self_view = f"{self_basename}-detail"
-    connection_view = f"{connection_basename}-detail"
-
-    api_url = reverse(self_view, args=[obj.pk], request=request)
-    connections_count = connection_queryset.count()
-    connections = [
-        reverse(connection_view, args=[n.pk], request=request)
-        for n in connection_queryset
-    ]
-
-    return {
-        "api_url": api_url,
-        f"{connection_basename}_connections_count": connections_count,
-        f"{connection_basename}_connections": connections,
-    }
+        return {
+            "api_url": api_url,
+            f"{connection_basename}_connections_count": connections_count,
+            f"{connection_basename}_connections": connections,
+        }
 
 
-UserField = serializers.PrimaryKeyRelatedField(
-    read_only=True, default=serializers.CurrentUserDefault()
+HiddenCurrentUserField = serializers.HiddenField(
+    default=serializers.CurrentUserDefault()
 )
 
 
@@ -92,7 +82,7 @@ class UniqueToUserField(serializers.RelatedField):
 #
 
 
-class MergeSerializer(serializers.Serializer):
+class MergeSerializer(MetadataMixin, serializers.Serializer):
 
     id = serializers.ReadOnlyField()
     name = serializers.CharField(max_length=256)
@@ -100,7 +90,7 @@ class MergeSerializer(serializers.Serializer):
     _metadata = serializers.SerializerMethodField("get_metadata")
 
     def get_metadata(self, obj):
-        return _get_metadata(
+        return self._metadata(
             obj=obj,
             self_basename=self.context.get("basename"),
             connection_queryset=obj.node_set.all(),
@@ -109,17 +99,16 @@ class MergeSerializer(serializers.Serializer):
         )
 
 
-class IndividualSerializer(serializers.Serializer):
+class IndividualSerializer(MetadataMixin, serializers.Serializer):
 
-    user = UserField
+    user = HiddenCurrentUserField
     id = serializers.ReadOnlyField()
     name = serializers.CharField(max_length=256)
     first_name = serializers.CharField(max_length=256, allow_blank=True)
     last_name = serializers.CharField(max_length=256, allow_blank=True)
 
-    # FIXME
-    # date_created = serializers.DateTimeField(allow_null=True)
-    # date_modified = serializers.DateTimeField(allow_null=True)
+    date_created = serializers.DateTimeField(read_only=True)
+    date_modified = serializers.DateTimeField(read_only=True)
 
     aka = UniqueToUserField(
         unique_field="name",
@@ -131,7 +120,7 @@ class IndividualSerializer(serializers.Serializer):
     _metadata = serializers.SerializerMethodField("get_metadata")
 
     def get_metadata(self, obj):
-        return _get_metadata(
+        return self._metadata(
             obj=obj,
             self_basename="individual",
             connection_queryset=obj.source_set.all(),
@@ -149,16 +138,15 @@ class IndividualSerializer(serializers.Serializer):
         ]
 
     def create(self, validated_data):
-        return Individual.objects.create(validated_data)
+        user = validated_data.pop("user")
+        return Individual.objects.create(user, **validated_data)
 
     def update(self, instance, validated_data):
-        return Individual.objects.update(validated_data)
+        user = validated_data.pop("user")
+        return Individual.objects.update(user, instance, **validated_data)
 
 
-class SourceSerializer(serializers.Serializer):
-
-    # QUESTION: Can we use this data somehow during .validate() ?
-    user = UserField
+class SourceSerializer(MetadataMixin, serializers.Serializer):
 
     id = serializers.ReadOnlyField()
     name = serializers.CharField(max_length=256, allow_blank=True)
@@ -172,14 +160,13 @@ class SourceSerializer(serializers.Serializer):
     date = serializers.CharField(max_length=256, allow_blank=True)
     notes = serializers.CharField(allow_blank=True)
 
-    # FIXME
-    # date_created = serializers.DateTimeField(allow_null=True)
-    # date_modified = serializers.DateTimeField(allow_null=True)
+    date_created = serializers.DateTimeField(read_only=True)
+    date_modified = serializers.DateTimeField(read_only=True)
 
     _metadata = serializers.SerializerMethodField("get_metadata")
 
     def get_metadata(self, obj):
-        return _get_metadata(
+        return self._metadata(
             obj=obj,
             self_basename="source",
             connection_queryset=obj.node_set.all(),
@@ -197,7 +184,7 @@ class SourceSerializer(serializers.Serializer):
 
         if not name and not individuals:
             raise exceptions.ValidationError(
-                "Both 'name' and 'individuals' cannot be blank."
+                "Source 'name' and 'individuals' cannot be blank."
             )
 
         try:
@@ -210,25 +197,27 @@ class SourceSerializer(serializers.Serializer):
         return data
 
     def create(self, validated_data):
-        return Source.objects.create(validated_data)
+        user = validated_data.pop("user")
+        return Source.objects.create(user, **validated_data)
 
     def update(self, instance, validated_data):
-        return Source.objects.update(validated_data)
+        user = validated_data.pop("user")
+        return Source.objects.update(user, instance, **validated_data)
 
 
-class TagSerializer(serializers.Serializer):
+class TagSerializer(MetadataMixin, serializers.Serializer):
 
-    user = UserField
+    user = HiddenCurrentUserField
     id = serializers.ReadOnlyField()
     name = serializers.CharField(max_length=64)
 
-    date_created = serializers.DateTimeField(allow_null=True)
-    date_modified = serializers.DateTimeField(allow_null=True)
+    date_created = serializers.DateTimeField(read_only=True)
+    date_modified = serializers.DateTimeField(read_only=True)
 
     _metadata = serializers.SerializerMethodField("get_metadata")
 
     def get_metadata(self, obj):
-        return _get_metadata(
+        return self._metadata(
             obj=obj,
             self_basename="tag",
             connection_queryset=obj.node_set.all(),
@@ -246,27 +235,29 @@ class TagSerializer(serializers.Serializer):
         ]
 
     def create(self, validated_data):
-        return Tag.objects.create(**validated_data)
+        user = validated_data.pop("user")
+        return Tag.objects.create(user, **validated_data)
 
     def update(self, instance, validated_data):
-        return Tag.objects.update(validated_data)
+        user = validated_data.pop("user")
+        return Tag.objects.update(user, instance, **validated_data)
 
 
-class CollectionSerializer(serializers.Serializer):
+class CollectionSerializer(MetadataMixin, serializers.Serializer):
 
-    user = UserField
+    user = HiddenCurrentUserField
     id = serializers.ReadOnlyField()
     name = serializers.CharField(max_length=64)
     color = serializers.CharField(max_length=32, allow_blank=True)
     description = serializers.CharField(allow_blank=True)
 
-    date_created = serializers.DateTimeField(allow_null=True)
-    date_modified = serializers.DateTimeField(allow_null=True)
+    date_created = serializers.DateTimeField(read_only=True)
+    date_modified = serializers.DateTimeField(read_only=True)
 
     _metadata = serializers.SerializerMethodField("get_metadata")
 
     def get_metadata(self, obj):
-        return _get_metadata(
+        return self._metadata(
             obj=obj,
             self_basename="collection",
             connection_queryset=obj.node_set.all(),
@@ -284,25 +275,27 @@ class CollectionSerializer(serializers.Serializer):
         ]
 
     def create(self, validated_data):
-        return Collection.objects.create(**validated_data)
+        user = validated_data.pop("user")
+        return Collection.objects.create(user, **validated_data)
 
     def update(self, instance, validated_data):
-        return Collection.objects.update(validated_data)
+        user = validated_data.pop("user")
+        return Collection.objects.update(user, instance, **validated_data)
 
 
-class OriginSerializer(serializers.Serializer):
+class OriginSerializer(MetadataMixin, serializers.Serializer):
 
-    user = UserField
+    user = HiddenCurrentUserField
     id = serializers.ReadOnlyField()
     name = serializers.CharField(max_length=64)
 
-    date_created = serializers.DateTimeField(allow_null=True)
-    date_modified = serializers.DateTimeField(allow_null=True)
+    date_created = serializers.DateTimeField(read_only=True)
+    date_modified = serializers.DateTimeField(read_only=True)
 
     _metadata = serializers.SerializerMethodField("get_metadata")
 
     def get_metadata(self, obj):
-        return _get_metadata(
+        return self._metadata(
             obj=obj,
             self_basename="origin",
             connection_queryset=obj.node_set.all(),
@@ -320,16 +313,18 @@ class OriginSerializer(serializers.Serializer):
         ]
 
     def create(self, validated_data):
-        return Origin.objects.create(**validated_data)
+        user = validated_data.pop("user")
+        return Origin.objects.create(user, **validated_data)
 
     def update(self, instance, validated_data):
-        return Origin.objects.update(**validated_data)
+        user = validated_data.pop("user")
+        return Origin.objects.update(user, instance, **validated_data)
 
 
 #
 
 
-class NestedSourceSerializer(serializers.Serializer):
+class NestedSourceSerializer(MetadataMixin, serializers.Serializer):
 
     name = serializers.CharField(max_length=256, allow_blank=True)
     individuals = UniqueToUserField(
@@ -339,14 +334,17 @@ class NestedSourceSerializer(serializers.Serializer):
         allow_null=True,
     )
 
-    # QUESTION: Do we want to pass extra fields here during a nested creation?
+    url = serializers.CharField(allow_blank=True)
+    date = serializers.CharField(max_length=256, allow_blank=True)
+    notes = serializers.CharField(allow_blank=True)
 
 
-class NodeSerializer(serializers.Serializer):
+class NodeSerializer(MetadataMixin, serializers.Serializer):
 
     id = serializers.UUIDField(allow_null=True)
     text = serializers.CharField(allow_blank=True)
     media = serializers.FileField(allow_null=True)
+    link = serializers.URLField(allow_blank=True)
 
     source = NestedSourceSerializer(allow_null=True)
     notes = serializers.CharField(allow_blank=True)
@@ -371,6 +369,7 @@ class NodeSerializer(serializers.Serializer):
         many=True, allow_null=True, queryset=Node.objects.all()
     )
 
+    auto_ocr = serializers.CharField(read_only=True)
     auto_tags = serializers.StringRelatedField(many=True, read_only=True)
     auto_related = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
 
@@ -380,8 +379,7 @@ class NodeSerializer(serializers.Serializer):
     _metadata = serializers.SerializerMethodField("get_metadata")
 
     def get_metadata(self, obj):
-
-        return _get_metadata(
+        return self._metadata(
             obj=obj,
             self_basename="node",
             connection_queryset=obj.related.all() | obj.auto_related.all(),
@@ -392,15 +390,25 @@ class NodeSerializer(serializers.Serializer):
     def validate(self, data):
 
         text = data.get("text", None)
+        link = data.get("link", None)
         media = data.get("media", None)
 
-        if not text and not media:
-            raise exceptions.ValidationError("Both 'text' and 'media' cannot be blank.")
+        if not any([text, media, link]):
+            raise exceptions.ValidationError(
+                "Nodes cannot have 'text', 'link' and 'media' blank."
+            )
+
+        if not data.get("date_created", None):
+            data.pop("date_created", None)
+        if not data.get("date_modified", None):
+            data.pop("date_modified", None)
 
         return data
 
     def create(self, validated_data):
-        return Node.objects.create(validated_data)
+        user = validated_data.pop("user")
+        return Node.objects.create(user, **validated_data)
 
     def update(self, instance, validated_data):
-        return Node.objects.update(instance, validated_data)
+        user = validated_data.pop("user")
+        return Node.objects.update(user, instance, **validated_data)
