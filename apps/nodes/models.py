@@ -28,6 +28,9 @@ class CommonDataMixin(models.Model):
             self.modified = timezone.now()
         super().save(*args, **kwargs)
 
+
+class UpdateMixin:
+
     @staticmethod
     def update_fields(instance, data: dict, fields: list):
         """ Sets instance fields to new value if new value exists. Runs:
@@ -41,7 +44,7 @@ class CommonDataMixin(models.Model):
         return instance
 
 
-class IndividualManager(models.Manager):
+class IndividualManager(UpdateMixin, models.Manager):
     def get_queryset(self):
         return super().get_queryset()
 
@@ -88,7 +91,7 @@ class IndividualManager(models.Manager):
 
     def create(self, user, **data):
 
-        aka = data.pop("aka")
+        aka = data.pop("aka", None)
         aka_objs = self.bulk_get_or_create(user, aka)
 
         obj = super().create(user=user, **data)
@@ -101,7 +104,7 @@ class IndividualManager(models.Manager):
 
         fields = ["name", "first_name", "last_name"]
 
-        aka = data.pop("aka")
+        aka = data.pop("aka", None)
         aka_objs = self.bulk_get_or_create(user, aka)
 
         instance = self.update_fields(instance, data, fields)
@@ -234,7 +237,7 @@ class Individual(CommonDataMixin, models.Model):
         return individual_pks
 
 
-class SourceManager(models.Manager):
+class SourceManager(UpdateMixin, models.Manager):
     def get_queryset(self):
         return super().get_queryset()
 
@@ -397,7 +400,7 @@ class Source(CommonDataMixin, models.Model):
                 raise ValidationError()
 
 
-class TagManager(models.Manager):
+class TagManager(UpdateMixin, models.Manager):
     def create(self, user, **data):
         return super().create(user=user, **data)
 
@@ -429,7 +432,7 @@ class Tag(CommonDataMixin, models.Model):
         return f"<{self.__class__.__name__}:{self.name}>"
 
 
-class CollectionManager(models.Manager):
+class CollectionManager(UpdateMixin, models.Manager):
     def create(self, user, **data):
         return super().create(user=user, **data)
 
@@ -463,7 +466,7 @@ class Collection(CommonDataMixin, models.Model):
         return f"<{self.__class__.__name__}:{self.name}>"
 
 
-class OriginManager(models.Manager):
+class OriginManager(UpdateMixin, models.Manager):
     def create(self, user, **data):
         return super().create(user=user, **data)
 
@@ -543,7 +546,7 @@ class MediaManager:
             return "misc"
 
 
-class NodeManager(models.Manager):
+class NodeManager(UpdateMixin, models.Manager):
     def get_queryset(self):
         return super().get_queryset()
 

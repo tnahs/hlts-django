@@ -6,13 +6,6 @@ from django.utils import timezone
 from ..models import Collection, Individual, Node, Origin, Source, Tag
 
 
-# TODO:
-#  Test create from dictionaries.
-#  Text create objects and append to parents.
-#  Text update from dictionaries.
-#  Text update objects and append to parents.
-
-
 @pytest.fixture
 @pytest.mark.django_db
 def user():
@@ -24,8 +17,10 @@ def user():
 @pytest.mark.django_db
 class TestSource:
 
-    source_name = "Test Source"
-    source_individuals = ["Test Individual1", "Test Individual2"]
+    # TODO: Source might need a bit more testing. Revisit after testing serializers.
+
+    name = "Test Source"
+    individuals = ["Test Individual1", "Test Individual2"]
     url = "http://www.source-url.com"
     date = "January, 1, 2000"
     notes = "Source notes."
@@ -33,41 +28,110 @@ class TestSource:
     def test_create(self, user):
 
         fields = {
-            "user": user,
-            "name": self.source_name,
-            "individuals": self.source_individuals,
-            # "url": self.url,
-            # "date": self.date,
-            # "notes": self.notes,
+            "name": self.name,
+            "individuals": self.individuals,
+            "url": self.url,
+            "date": self.date,
+            "notes": self.notes,
         }
 
-        source = Source.objects.create(fields)
+        source = Source.objects.create(user, **fields)
 
         assert source.user == user
-        assert source.name == self.source_name
-        assert source.individuals.count() == len(self.source_individuals)
-        # assert source.url == self.url
-        # assert source.data == self.data
-        # assert source.notes == self.notes
+        assert source.name == self.name
+        assert source.individuals.count() == len(self.individuals)
+        assert source.url == self.url
+        assert source.date == self.date
+        assert source.notes == self.notes
 
     def test_create_minimum(self, user):
+        """ Test user can create Source with name or individuals only. """
 
-        fields = {
-            "user": user,
-            "name": self.source_name,
-            "individuals": self.source_individuals,
-        }
-
-        source = Source.objects.create(fields)
-
+        source = Source.objects.create(user, name=self.name)
         assert source.user == user
-        assert source.name == self.source_name
-        assert source.individuals.count() == len(self.source_individuals)
+        assert source.name == self.name
+
+        source = Source.objects.create(user, individuals=self.individuals)
+        assert source.user == user
+        assert source.individuals.count() == len(self.individuals)
+
+    def test_missing_user(self):
+        """ Test Source always has a user. """
+
+        with pytest.raises(IntegrityError):
+            Source.objects.create(user=None, name=self.name)
 
 
 @pytest.mark.django_db
 class TestIndividual:
-    pass
+
+    name = "John Doe"
+    first_name = "John"
+    last_name = "Doe"
+    aka = ["Johnathan Doe", "John J. Doe"]
+
+    def test_create(self, user):
+
+        fields = {
+            "name": self.name,
+            "first_name": self.first_name,
+            "last_name": self.last_name,
+            "aka": self.aka,
+        }
+
+        individual = Individual.objects.create(user, **fields)
+
+        assert individual.user == user
+        assert individual.name == self.name
+        assert individual.first_name == self.first_name
+        assert individual.last_name == self.last_name
+        assert individual.aka.count() == len(self.aka)
+
+        # Test __str__ and __repr__ return strings.
+        assert isinstance(individual.__str__(), str)
+        assert isinstance(individual.__repr__(), str)
+
+    def test_create_minimum(self, user):
+        """ Test user can create Individual with name only. """
+
+        individual = Individual.objects.create(user, name=self.name)
+
+        assert individual.user == user
+        assert individual.name == self.name
+
+    def test_create_unique_together(self, user):
+        """ Test creating Individuals cannot have the same name and user. """
+
+        Individual.objects.create(user, name=self.name)
+
+        with pytest.raises(IntegrityError):
+            Individual.objects.create(user, name=self.name)
+
+    def test_update(self, user):
+
+        updated_name = "Johnny Doe"
+
+        individual = Individual.objects.create(user, name=self.name)
+        Individual.objects.update(user, individual, name=updated_name)
+
+        assert individual.name == updated_name
+
+    def test_update_unique_together(self, user):
+        """ Test updating Individuals cannot have the same name and user. """
+
+        existing_name = "Johnny Doe"
+        Individual.objects.create(user, name=existing_name)
+
+        individual = Individual.objects.create(user, name=self.name)
+
+        with pytest.raises(IntegrityError):
+            Individual.objects.update(user, individual, name=existing_name)
+
+    def test_missing_user(self):
+        """ Test Individual always has a user. """
+
+        with pytest.raises(IntegrityError):
+            Individual.objects.create(user=None, name=self.name)
 
 
 @pytest.mark.django_db
@@ -77,28 +141,49 @@ class TestTag:
 
     def test_create(self, user):
 
-        tag = Tag.objects.create(name=self.name, user=user)
+        fields = {"name": self.name}
 
-        assert tag.name == self.name
+        tag = Tag.objects.create(user, **fields)
+
         assert tag.user == user
+        assert tag.name == self.name
 
         # Test __str__ and __repr__ return strings.
         assert isinstance(tag.__str__(), str)
         assert isinstance(tag.__repr__(), str)
 
+    def test_create_minimum(self, user):
+        """ Test user can create Tag with name only. """
+
+        tag = Tag.objects.create(user, name=self.name)
+
+        assert tag.user == user
+        assert tag.name == self.name
+
+    def test_create_unique_together(self, user):
+        """ Test creating Tags cannot have the same name and user. """
+
+        Tag.objects.create(user, name=self.name)
+
+        with pytest.raises(IntegrityError):
+            Tag.objects.create(user, name=self.name)
+
+    def test_update(self, user):
+
+        tag = Tag.objects.create(user, name=self.name)
+
+        assert tag.user == user
+        assert tag.name == self.name
+
+    def test_update_unique_together(self, user):
+        """ Test updating Tags cannot have the same name and user. """
+        pass
+
     def test_missing_user(self):
         """ Test Tag always has a user. """
 
         with pytest.raises(IntegrityError):
-            Tag.objects.create(name=self.name)
-
-    def test_unique_together(self, user):
-        """ Test no two Tags have the same name and user. """
-
-        Tag.objects.create(name=self.name, user=user)
-
-        with pytest.raises(IntegrityError):
-            Tag.objects.create(name=self.name, user=user)
+            Tag.objects.create(user=None, name=self.name)
 
 
 @pytest.mark.django_db
@@ -116,14 +201,12 @@ class TestCollection:
             "description": self.description,
         }
 
-        collection = Collection.objects.create(user=user, **fields)
+        collection = Collection.objects.create(user, **fields)
 
-        assert collection.name == self.name
         assert collection.user == user
-
-        # Test all extra_fileds map correctly to model.
-        for name, value in fields.items():
-            assert getattr(collection, name, value) == value
+        assert collection.name == self.name
+        assert collection.color == self.color
+        assert collection.description == self.description
 
         # Test __str__ and __repr__ return strings.
         assert isinstance(collection.__str__(), str)
@@ -132,29 +215,79 @@ class TestCollection:
     def test_create_minimum(self, user):
         """ Test user can create Collection with name only. """
 
-        collection = Collection.objects.create(name=self.name, user=user)
+        collection = Collection.objects.create(user, name=self.name)
 
-        assert collection.name == self.name
         assert collection.user == user
+        assert collection.name == self.name
+
+    def test_create_unique_together(self, user):
+        """ Test creating Collections cannot have the same name and user. """
+
+        Collection.objects.create(user, name=self.name)
+
+        with pytest.raises(IntegrityError):
+            Collection.objects.create(user, name=self.name)
+
+    def test_update(self, user):
+        pass
+
+    def test_update_unique_together(self, user):
+        """ Test updating Collections cannot have the same name and user. """
+        pass
 
     def test_missing_user(self):
         """ Test Collection always has a user. """
 
         with pytest.raises(IntegrityError):
-            Collection.objects.create(name=self.name)
-
-    def test_unique_together(self, user):
-        """ Test no two Collections have the same name and user. """
-
-        Collection.objects.create(name=self.name, user=user)
-
-        with pytest.raises(IntegrityError):
-            Collection.objects.create(name=self.name, user=user)
+            Collection.objects.create(user=None, name=self.name)
 
 
 @pytest.mark.django_db
 class TestOrigin:
-    pass
+
+    name = "app"
+
+    def test_create(self, user):
+
+        fields = {"name": self.name}
+
+        origin = Origin.objects.create(user, **fields)
+
+        assert origin.user == user
+        assert origin.name == self.name
+
+        # Test __str__ and __repr__ return strings.
+        assert isinstance(origin.__str__(), str)
+        assert isinstance(origin.__repr__(), str)
+
+    def test_create_minimum(self, user):
+        """ Test user can create Origin with name only. """
+
+        origin = Origin.objects.create(user, name=self.name)
+
+        assert origin.user == user
+        assert origin.name == self.name
+
+    def test_create_unique_together(self, user):
+        """ Test creating Origins cannot have the same name and user. """
+
+        Origin.objects.create(user, name=self.name)
+
+        with pytest.raises(IntegrityError):
+            Origin.objects.create(user, name=self.name)
+
+    def test_update(self, user):
+        pass
+
+    def test_update_unique_together(self, user):
+        """ Test updating Origins cannot have the same name and user. """
+        pass
+
+    def test_missing_user(self):
+        """ Test Origin always has a user. """
+
+        with pytest.raises(IntegrityError):
+            Origin.objects.create(user=None, name=self.name)
 
 
 @pytest.mark.django_db
@@ -163,31 +296,35 @@ class TestNode:
     id = "538b847e-9c14-11e9-a2a3-2a2ae2dbcce4"
     text = "Node text."
     media = "/path/to/media.png"
-    url = "http://node-url.com"
+    link = "http://node-link.com"
     source_name = "Test Source"
     source_individuals = ["Test Individual1", "Test Individual2"]
+    source_url = "http://www.source-url.com"
+    source_date = "January, 1, 2000"
+    source_notes = "Source notes."
     notes = "Node notes."
     tags = {"tag1", "tag2", "tag3"}
     collections = {"collection1", "collection2", "collection3"}
     origin = "app"
     in_trash = False
     is_starred = False
-    # TODO: Create a dummy Node and relate it.
-    related = []
     date_created = timezone.now().isoformat()
+    date_modified = timezone.now().isoformat()
 
     def test_create(self, user):
         """ Test full creation of a Node. """
 
         fields = {
-            "user": user,
             "id": self.id,
             "text": self.text,
             "media": self.media,
-            "url": self.url,
+            "link": self.link,
             "source": {
                 "name": self.source_name,
                 "individuals": self.source_individuals,
+                "url": self.source_url,
+                "date": self.source_date,
+                "notes": self.source_notes,
             },
             "notes": self.notes,
             "tags": self.tags,
@@ -195,17 +332,17 @@ class TestNode:
             "origin": self.origin,
             "in_trash": self.in_trash,
             "is_starred": self.is_starred,
-            "related": self.related,
             "date_created": self.date_created,
-            # "date_modified": self.date_modified,
+            "date_modified": self.date_modified,
         }
 
-        node = Node.objects.create(fields)
+        node = Node.objects.create(user, **fields)
 
         assert node.user == user
         assert node.id == self.id
         assert node.text == self.text
         assert node.media == self.media
+        assert node.link == self.link
         assert node.source.name == self.source_name
         assert node.source.individuals.count() == len(self.source_individuals)
         assert node.notes == self.notes
@@ -214,7 +351,6 @@ class TestNode:
         assert node.origin.name == self.origin
         assert node.in_trash == self.in_trash
         assert node.is_starred == self.is_starred
-        assert node.related.count() == len(self.related)
         assert node.date_created == self.date_created
 
         # Test __str__ and __repr__ return strings.
@@ -222,31 +358,40 @@ class TestNode:
         assert isinstance(node.__repr__(), str)
 
     def test_create_minimum(self, user):
-        """ Test user can create Node with text only or media only. """
+        """ Test user can create Node with only text, media or link. """
 
-        fields_text = {"user": user, "text": self.text}
-        node_text = Node.objects.create(fields_text)
-
+        node_text = Node.objects.create(user, text=self.text)
         assert node_text.text == self.text
         assert node_text.user == user
 
-        fields_media = {"user": user, "media": self.media}
-        node_media = Node.objects.create(fields_media)
-
+        node_media = Node.objects.create(user, media=self.media)
         assert node_media.media == self.media
         assert node_media.user == user
 
-        """
-        # FIXME Either text or media must be set, both cannot be empty...
-        fields_invalid = {"user": user}
-        with pytest.raises(IntegrityError):
-            Node.objects.create(fields_invalid)
-        """
+        node_media = Node.objects.create(user, link=self.link)
+        assert node_media.link == self.link
+        assert node_media.user == user
+
+    def test_update(self, user):
+        pass
+
+    def test_related(self, user):
+
+        node_a = Node.objects.create(user, text=self.text)
+        node_b = Node.objects.create(user, text=self.text)
+
+        node_a.related.add(node_b)
+        node_a.save()
+
+        assert node_a.related.count() == 1
+        assert node_a.related.first() == node_b
+        assert node_b.related.count() == 1
+        assert node_b.related.first() == node_a
 
     def test_missing_user(self):
         """ Test Node always has a user. """
 
-        fields_invalid = {"text": self.text}
+        fields = {"text": self.text}
 
         with pytest.raises(IntegrityError):
-            Node.objects.create(fields_invalid)
+            Node.objects.create(user=None, **fields)

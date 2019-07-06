@@ -6,7 +6,7 @@ from .models import Collection, Individual, Node, Origin, Source, Tag
 
 
 class MetadataMixin:
-    def _metadata(
+    def _get_metadata(
         self, obj, self_basename, connection_queryset, connection_basename, request
     ):
         self_view = f"{self_basename}-detail"
@@ -87,10 +87,10 @@ class MergeSerializer(MetadataMixin, serializers.Serializer):
     id = serializers.ReadOnlyField()
     name = serializers.CharField(max_length=256)
 
-    _metadata = serializers.SerializerMethodField("get_metadata")
+    metadata = serializers.SerializerMethodField()
 
     def get_metadata(self, obj):
-        return self._metadata(
+        return self._get_metadata(
             obj=obj,
             self_basename=self.context.get("basename"),
             connection_queryset=obj.node_set.all(),
@@ -117,10 +117,10 @@ class IndividualSerializer(MetadataMixin, serializers.Serializer):
         allow_null=True,
     )
 
-    _metadata = serializers.SerializerMethodField("get_metadata")
+    metadata = serializers.SerializerMethodField()
 
     def get_metadata(self, obj):
-        return self._metadata(
+        return self._get_metadata(
             obj=obj,
             self_basename="individual",
             connection_queryset=obj.source_set.all(),
@@ -163,10 +163,10 @@ class SourceSerializer(MetadataMixin, serializers.Serializer):
     date_created = serializers.DateTimeField(read_only=True)
     date_modified = serializers.DateTimeField(read_only=True)
 
-    _metadata = serializers.SerializerMethodField("get_metadata")
+    metadata = serializers.SerializerMethodField()
 
     def get_metadata(self, obj):
-        return self._metadata(
+        return self._get_metadata(
             obj=obj,
             self_basename="source",
             connection_queryset=obj.node_set.all(),
@@ -214,10 +214,10 @@ class TagSerializer(MetadataMixin, serializers.Serializer):
     date_created = serializers.DateTimeField(read_only=True)
     date_modified = serializers.DateTimeField(read_only=True)
 
-    _metadata = serializers.SerializerMethodField("get_metadata")
+    metadata = serializers.SerializerMethodField()
 
     def get_metadata(self, obj):
-        return self._metadata(
+        return self._get_metadata(
             obj=obj,
             self_basename="tag",
             connection_queryset=obj.node_set.all(),
@@ -254,10 +254,10 @@ class CollectionSerializer(MetadataMixin, serializers.Serializer):
     date_created = serializers.DateTimeField(read_only=True)
     date_modified = serializers.DateTimeField(read_only=True)
 
-    _metadata = serializers.SerializerMethodField("get_metadata")
+    metadata = serializers.SerializerMethodField()
 
     def get_metadata(self, obj):
-        return self._metadata(
+        return self._get_metadata(
             obj=obj,
             self_basename="collection",
             connection_queryset=obj.node_set.all(),
@@ -292,10 +292,10 @@ class OriginSerializer(MetadataMixin, serializers.Serializer):
     date_created = serializers.DateTimeField(read_only=True)
     date_modified = serializers.DateTimeField(read_only=True)
 
-    _metadata = serializers.SerializerMethodField("get_metadata")
+    metadata = serializers.SerializerMethodField()
 
     def get_metadata(self, obj):
-        return self._metadata(
+        return self._get_metadata(
             obj=obj,
             self_basename="origin",
             connection_queryset=obj.node_set.all(),
@@ -376,10 +376,10 @@ class NodeSerializer(MetadataMixin, serializers.Serializer):
     date_created = serializers.DateTimeField(allow_null=True)
     date_modified = serializers.DateTimeField(allow_null=True)
 
-    _metadata = serializers.SerializerMethodField("get_metadata")
+    metadata = serializers.SerializerMethodField()
 
     def get_metadata(self, obj):
-        return self._metadata(
+        return self._get_metadata(
             obj=obj,
             self_basename="node",
             connection_queryset=obj.related.all() | obj.auto_related.all(),
