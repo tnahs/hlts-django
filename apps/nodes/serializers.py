@@ -79,26 +79,6 @@ class UniqueToUserField(serializers.RelatedField):
         return getattr(obj, self._unique_field)
 
 
-#
-
-
-class MergeSerializer(MetadataMixin, serializers.Serializer):
-
-    id = serializers.ReadOnlyField()
-    name = serializers.CharField(max_length=256)
-
-    metadata = serializers.SerializerMethodField()
-
-    def get_metadata(self, obj):
-        return self._get_metadata(
-            obj=obj,
-            self_basename=self.context.get("basename"),
-            connection_queryset=obj.node_set.all(),
-            connection_basename="node",
-            request=self.context.get("request"),
-        )
-
-
 class IndividualSerializer(MetadataMixin, serializers.Serializer):
 
     user = HiddenCurrentUserField
@@ -412,3 +392,52 @@ class NodeSerializer(MetadataMixin, serializers.Serializer):
     def update(self, instance, validated_data):
         user = validated_data.pop("user")
         return Node.objects.update(user, instance, **validated_data)
+
+
+class MergeSerializer(MetadataMixin, serializers.Serializer):
+
+    CHOICES = ("sources", "tags", "collections", "origins")
+
+    which = serializers.ChoiceField(choices=CHOICES)
+    into = serializers.CharField(max_length=256)
+    merging = serializers.ListField(child=serializers.CharField(max_length=256))
+
+    def validate(self, data):
+
+        # TODO: Clean-up up errors.
+
+        request = self.context.get("request")
+
+        which = data.get("which")
+        into = data.get("into")
+        merging = data.get("merging")
+
+        Model = getattr(request.user, which).model
+
+        errors = {}
+
+        try:
+            into_obj = Model.objects.get(name=into)
+        except Model.DoesNotExist:
+            errors["into"] = f"Item '{into}' does not exist."
+
+        merging_objs = []
+        errors["merging"] = []
+        for name in merging:
+            try:
+                merging_obj = Model.objects.get(name=name)
+            except Model.DoesNotExist:
+                errors["merging"].append(f"Item '{name}' does not exist.")
+            else:
+                merging_objs.append(merging_obj)
+
+        if any(errors.values()):
+            raise validators.ValidationError(errors)
+
+        objs = {"into": into_obj, "merging": merging_objs}
+
+        return objs
+
+    def create(self, validated_data):
+        # TODO: Process merge here...
+        return validated_data

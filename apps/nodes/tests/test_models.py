@@ -19,10 +19,12 @@ class TestSource:
 
     # TODO: Source might need a bit more testing. Revisit after testing serializers.
 
-    name = "Test Source"
-    individuals = ["Test Individual1", "Test Individual2"]
+    name = "Source"
+    individual0 = "Individual0"
+    individual1 = "Individual1"
+    individuals = [individual0, individual1]
     url = "http://www.source-url.com"
-    date = "January, 1, 2000"
+    date = "January 1, 2000"
     notes = "Source notes."
 
     def test_create(self, user):
@@ -40,9 +42,15 @@ class TestSource:
         assert source.user == user
         assert source.name == self.name
         assert source.individuals.count() == len(self.individuals)
+        assert Individual.objects.get(name=self.individual0) in source.individuals.all()
+        assert Individual.objects.get(name=self.individual1) in source.individuals.all()
         assert source.url == self.url
         assert source.date == self.date
         assert source.notes == self.notes
+
+        # Test __str__ and __repr__ return strings.
+        assert isinstance(source.__str__(), str)
+        assert isinstance(source.__repr__(), str)
 
     def test_create_minimum(self, user):
         """ Test user can create Source with name or individuals only. """
@@ -55,20 +63,58 @@ class TestSource:
         assert source.user == user
         assert source.individuals.count() == len(self.individuals)
 
-    def test_missing_user(self):
+    def test_create_missing_user(self):
         """ Test Source always has a user. """
 
         with pytest.raises(IntegrityError):
             Source.objects.create(user=None, name=self.name)
 
+    def test_create_unique_to_user(self, user):
+        pass
+
+    def test_update(self, user):
+
+        source = Source.objects.create(user, name=self.name)
+
+        name = "Source Updated"
+        individual0 = "Individual0 Updated"
+        individual1 = "Individual1 Updated"
+        individuals = [individual0, individual1]
+        url = "http://www.source-url-updated.com"
+        date = "February 1, 2000"
+        notes = "Source notes updated."
+        updated_fields = {
+            "name": name,
+            "individuals": individuals,
+            "url": url,
+            "date": date,
+            "notes": notes,
+        }
+
+        updated = Source.objects.update(user, source, **updated_fields)
+
+        assert updated.pk == source.pk
+        assert updated.name == name
+        assert updated.individuals.count() == len(individuals)
+        assert Individual.objects.get(name=individual0) in source.individuals.all()
+        assert Individual.objects.get(name=individual1) in source.individuals.all()
+        assert updated.url == url
+        assert updated.date == date
+        assert updated.notes == notes
+
+    def test_update_unique_to_user(self, user):
+        pass
+
 
 @pytest.mark.django_db
 class TestIndividual:
 
-    name = "John Doe"
-    first_name = "John"
-    last_name = "Doe"
-    aka = ["Johnathan Doe", "John J. Doe"]
+    name = "Individual"
+    first_name = "Individual-First"
+    last_name = "Individual-Last"
+    aka0 = "Individual-alt0"
+    aka1 = "Individual-alt1"
+    aka = [aka0, aka1]
 
     def test_create(self, user):
 
@@ -86,6 +132,8 @@ class TestIndividual:
         assert individual.first_name == self.first_name
         assert individual.last_name == self.last_name
         assert individual.aka.count() == len(self.aka)
+        assert Individual.objects.get(name=self.aka0) in individual.aka.all()
+        assert Individual.objects.get(name=self.aka1) in individual.aka.all()
 
         # Test __str__ and __repr__ return strings.
         assert isinstance(individual.__str__(), str)
@@ -99,7 +147,13 @@ class TestIndividual:
         assert individual.user == user
         assert individual.name == self.name
 
-    def test_create_unique_together(self, user):
+    def test_create_missing_user(self):
+        """ Test Individual always has a user. """
+
+        with pytest.raises(IntegrityError):
+            Individual.objects.create(user=None, name=self.name)
+
+    def test_create_unique_to_user(self, user):
         """ Test creating Individuals cannot have the same name and user. """
 
         Individual.objects.create(user, name=self.name)
@@ -107,31 +161,70 @@ class TestIndividual:
         with pytest.raises(IntegrityError):
             Individual.objects.create(user, name=self.name)
 
+    def test_aka(self, user):
+        """ Test aka list items are created and related to one another. """
+
+        name_alt0 = "Individual-alt0"
+        name_alt1 = "Individual-alt1"
+        name_alt2 = "Individual-alt2"
+        aka = [name_alt1, name_alt2]
+
+        fields = {"name": name_alt0, "aka": aka}
+
+        Individual.objects.create(user, **fields)
+
+        individual_alt0 = Individual.objects.get(name=name_alt0)
+        individual_alt1 = Individual.objects.get(name=name_alt1)
+        individual_alt2 = Individual.objects.get(name=name_alt2)
+
+        assert individual_alt0 in individual_alt1.aka.all()
+        assert individual_alt0 in individual_alt2.aka.all()
+
+        # FIXME This does not work yet.
+        assert individual_alt1 in individual_alt0.aka.all()
+        assert individual_alt1 in individual_alt2.aka.all()
+
+        # FIXME This does not work yet.
+        assert individual_alt2 in individual_alt0.aka.all()
+        assert individual_alt2 in individual_alt1.aka.all()
+
     def test_update(self, user):
 
-        updated_name = "Johnny Doe"
-
         individual = Individual.objects.create(user, name=self.name)
-        Individual.objects.update(user, individual, name=updated_name)
 
-        assert individual.name == updated_name
+        name = "Individual Updated"
+        first_name = "Individual-First Updated"
+        last_name = "Individual-Last Updated"
+        aka0 = "Individual-alt0 Updated"
+        aka1 = "Individual-alt1 Updated"
+        aka = [aka0, aka1]
+        updated_fields = {
+            "name": name,
+            "first_name": first_name,
+            "last_name": last_name,
+            "aka": aka,
+        }
 
-    def test_update_unique_together(self, user):
+        updated = Individual.objects.update(user, individual, **updated_fields)
+
+        assert updated.pk == individual.pk
+        assert updated.name == name
+        assert updated.first_name == first_name
+        assert updated.last_name == last_name
+        assert updated.aka.count() == len(aka)
+        assert Individual.objects.get(name=aka0) in updated.aka.all()
+        assert Individual.objects.get(name=aka1) in updated.aka.all()
+
+    def test_update_unique_to_user(self, user):
         """ Test updating Individuals cannot have the same name and user. """
 
-        existing_name = "Johnny Doe"
+        existing_name = "Individual Existing"
         Individual.objects.create(user, name=existing_name)
 
         individual = Individual.objects.create(user, name=self.name)
 
         with pytest.raises(IntegrityError):
             Individual.objects.update(user, individual, name=existing_name)
-
-    def test_missing_user(self):
-        """ Test Individual always has a user. """
-
-        with pytest.raises(IntegrityError):
-            Individual.objects.create(user=None, name=self.name)
 
 
 @pytest.mark.django_db
@@ -160,7 +253,13 @@ class TestTag:
         assert tag.user == user
         assert tag.name == self.name
 
-    def test_create_unique_together(self, user):
+    def test_create_missing_user(self):
+        """ Test Tag always has a user. """
+
+        with pytest.raises(IntegrityError):
+            Tag.objects.create(user=None, name=self.name)
+
+    def test_create_unique_to_user(self, user):
         """ Test creating Tags cannot have the same name and user. """
 
         Tag.objects.create(user, name=self.name)
@@ -172,18 +271,24 @@ class TestTag:
 
         tag = Tag.objects.create(user, name=self.name)
 
-        assert tag.user == user
-        assert tag.name == self.name
+        updated_name = "tag-updated"
+        updated_fields = {"name": updated_name}
 
-    def test_update_unique_together(self, user):
+        updated = Tag.objects.update(user, tag, **updated_fields)
+
+        assert tag.pk == updated.pk
+        assert updated.name == updated_name
+
+    def test_update_unique_to_user(self, user):
         """ Test updating Tags cannot have the same name and user. """
-        pass
 
-    def test_missing_user(self):
-        """ Test Tag always has a user. """
+        existing_name = "tag-existing"
+        Tag.objects.create(user, name=existing_name)
+
+        tag = Tag.objects.create(user, name=self.name)
 
         with pytest.raises(IntegrityError):
-            Tag.objects.create(user=None, name=self.name)
+            Tag.objects.update(user, tag, name=existing_name)
 
 
 @pytest.mark.django_db
@@ -220,7 +325,13 @@ class TestCollection:
         assert collection.user == user
         assert collection.name == self.name
 
-    def test_create_unique_together(self, user):
+    def test_create_missing_user(self):
+        """ Test Collection always has a user. """
+
+        with pytest.raises(IntegrityError):
+            Collection.objects.create(user=None, name=self.name)
+
+    def test_create_unique_to_user(self, user):
         """ Test creating Collections cannot have the same name and user. """
 
         Collection.objects.create(user, name=self.name)
@@ -229,23 +340,41 @@ class TestCollection:
             Collection.objects.create(user, name=self.name)
 
     def test_update(self, user):
-        pass
 
-    def test_update_unique_together(self, user):
-        """ Test updating Collections cannot have the same name and user. """
-        pass
+        collection = Collection.objects.create(user, name=self.name)
 
-    def test_missing_user(self):
-        """ Test Collection always has a user. """
+        updated_name = "collection-updated"
+        updated_color = "color-updated"
+        updated_description = "Collection description updated."
+        updated_fields = {
+            "name": updated_name,
+            "color": updated_color,
+            "description": updated_description,
+        }
+
+        updated = Collection.objects.update(user, collection, **updated_fields)
+
+        assert updated.pk == collection.pk
+        assert updated.name == updated_name
+        assert updated.color == updated_color
+        assert updated.description == updated_description
+
+    def test_update_unique_to_user(self, user):
+        """ Test updating Tags cannot have the same name and user. """
+
+        existing_name = "collection-existing"
+        Collection.objects.create(user, name=existing_name)
+
+        collection = Collection.objects.create(user, name=self.name)
 
         with pytest.raises(IntegrityError):
-            Collection.objects.create(user=None, name=self.name)
+            Collection.objects.update(user, collection, name=existing_name)
 
 
 @pytest.mark.django_db
 class TestOrigin:
 
-    name = "app"
+    name = "origin"
 
     def test_create(self, user):
 
@@ -268,7 +397,13 @@ class TestOrigin:
         assert origin.user == user
         assert origin.name == self.name
 
-    def test_create_unique_together(self, user):
+    def test_create_missing_user(self):
+        """ Test Origin always has a user. """
+
+        with pytest.raises(IntegrityError):
+            Origin.objects.create(user=None, name=self.name)
+
+    def test_create_unique_to_user(self, user):
         """ Test creating Origins cannot have the same name and user. """
 
         Origin.objects.create(user, name=self.name)
@@ -277,17 +412,27 @@ class TestOrigin:
             Origin.objects.create(user, name=self.name)
 
     def test_update(self, user):
-        pass
 
-    def test_update_unique_together(self, user):
-        """ Test updating Origins cannot have the same name and user. """
-        pass
+        origin = Origin.objects.create(user, name=self.name)
 
-    def test_missing_user(self):
-        """ Test Origin always has a user. """
+        updated_name = "origin-updated"
+        updated_fields = {"name": updated_name}
+
+        updated = Origin.objects.update(user, origin, **updated_fields)
+
+        assert updated.pk == origin.pk
+        assert origin.name == updated_name
+
+    def test_update_unique_to_user(self, user):
+        """ Test updating Tags cannot have the same name and user. """
+
+        existing_name = "origin-existing"
+        Origin.objects.create(user, name=existing_name)
+
+        origin = Origin.objects.create(user, name=self.name)
 
         with pytest.raises(IntegrityError):
-            Origin.objects.create(user=None, name=self.name)
+            Origin.objects.update(user, origin, name=existing_name)
 
 
 @pytest.mark.django_db
@@ -372,6 +517,12 @@ class TestNode:
         assert node_media.link == self.link
         assert node_media.user == user
 
+    def test_create_missing_user(self):
+        """ Test Node always has a user. """
+
+        with pytest.raises(IntegrityError):
+            Node.objects.create(user=None, text=self.text)
+
     def test_update(self, user):
         pass
 
@@ -383,15 +534,5 @@ class TestNode:
         node_a.related.add(node_b)
         node_a.save()
 
-        assert node_a.related.count() == 1
-        assert node_a.related.first() == node_b
-        assert node_b.related.count() == 1
-        assert node_b.related.first() == node_a
-
-    def test_missing_user(self):
-        """ Test Node always has a user. """
-
-        fields = {"text": self.text}
-
-        with pytest.raises(IntegrityError):
-            Node.objects.create(user=None, **fields)
+        assert node_a in node_b.related.all()
+        assert node_b in node_a.related.all()

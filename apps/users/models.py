@@ -6,20 +6,19 @@ from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.db import models
 
 
-class UserManager(BaseUserManager):
-    """ Custom User manager where e-mail is the unique identifier for
-    authentication instead of usernames. """
+from ..helpers import UpdateFieldsMixin
+
+
+class UserManager(UpdateFieldsMixin, BaseUserManager):
 
     use_in_migrations = True
 
-    def _create_user(self, email, password, **extra_fields):
-
-        # via BaseUserManager
-        email = self.normalize_email(email)
+    def _create(self, email, password, **extra_fields):
 
         user = self.model(email=email, **extra_fields)
         user.set_password(password)
-        user.save(using=self._db)
+        user.clean()
+        user.save()
 
         return user
 
@@ -28,7 +27,7 @@ class UserManager(BaseUserManager):
         extra_fields.setdefault("is_superuser", False)
         extra_fields.setdefault("is_staff", False)
 
-        return self._create_user(email, password, **extra_fields)
+        return self._create(email, password, **extra_fields)
 
     def create_superuser(self, email, password, **extra_fields):
 
@@ -41,49 +40,45 @@ class UserManager(BaseUserManager):
         if extra_fields.get("is_superuser") is not True:
             raise ValueError("Superuser must have is_superuser=True.")
 
-        return self._create_user(email, password, **extra_fields)
+        return self._create(email, password, **extra_fields)
+
+    def update(self, instance, **data):
+
+        fields = ["email", "first_name", "last_name", "theme"]
+
+        instance = self.update_fields(instance, data, fields)
+        instance.clean()
+        instance.save()
+
+        return instance
 
 
 class User(AbstractBaseUser, PermissionsMixin):
-    """
-    via https://docs.djangoproject.com/en/2.2/topics/auth/customizing/
+    """ References:
+    https://docs.djangoproject.com/en/2.2/topics/auth/customizing/
     https://github.com/tmm/django-username-email/blob/master/cuser/models.py
     https://testdriven.io/blog/django-custom-user-model/ """
 
     THEME_CHOICES = [(0, "Default"), (1, "Dark"), (2, "Warm")]
+    THEME_DEFAULT = 0
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    email = models.EmailField(
-        "e-mail",
-        max_length=128,
-        unique=True,
-        help_text="Required. 128 characters or fewer.",
-        error_messages={"unique": "A user with that e-mail already exists."},
-    )
+    email = models.EmailField("e-mail", max_length=128, unique=True)
     first_name = models.CharField(max_length=128, blank=True)
     last_name = models.CharField(max_length=128, blank=True)
+    theme = models.IntegerField(choices=THEME_CHOICES, default=THEME_DEFAULT)
+
     # password = models.CharField ... via AbstractBaseUser
-
+    # last_login = models.DateTimeField ... via AbstractBaseUser
     # is_superuser = models.BooleanField ... via PermissionsMixin
-    is_staff = models.BooleanField(
-        default=False,
-        help_text="Designates whether the user can log into this admin site.",
-    )
-    is_active = models.BooleanField(
-        default=True,
-        help_text="Designates whether this user should be treated as active. "
-        "Unselect this instead of deleting accounts.",
-    )
-
-    theme = models.IntegerField(choices=THEME_CHOICES, default=0)
+    is_staff = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
 
     # QUESTION: Add date_created ?
-    # last_login = models.DateTimeField ... via AbstractBaseUser
+    # QUESTION: When is this timestamped ?
 
     USERNAME_FIELD = "email"
     EMAIL_FIELD = "email"
-
-    # REQUIRED_FIELDS ... via AbstractBaseUser
 
     objects = UserManager()
 
@@ -95,11 +90,6 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     # def set_password(): ... via AbstractBaseUser
     # def check_password(): ... via AbstractBaseUser
-
-    # TODO: Still sorting out where to do validation...
-    # def save(self, *args, **kwargs):
-    #     self.full_clean()
-    #     super().save(*args, **kwargs)
 
     # via AbstractUser
     def clean(self):

@@ -1,5 +1,4 @@
 from __future__ import annotations
-
 # https://stackoverflow.com/a/49872353
 
 import pathlib
@@ -11,8 +10,10 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
+from ..helpers import UpdateFieldsMixin
 
-class CommonDataMixin(models.Model):
+
+class TimestampedModel(models.Model):
 
     date_created = models.DateTimeField(default=timezone.now)
     date_modified = models.DateTimeField(null=True, blank=True)
@@ -29,22 +30,7 @@ class CommonDataMixin(models.Model):
         super().save(*args, **kwargs)
 
 
-class UpdateMixin:
-
-    @staticmethod
-    def update_fields(instance, data: dict, fields: list):
-        """ Sets instance fields to new value if new value exists. Runs:
-        instance.field = data.get(field, instance.field) on each field. """
-
-        for field in fields:
-            value_original = getattr(instance, field)
-            value_new = data.get(field, value_original)
-            setattr(instance, field, value_new)
-
-        return instance
-
-
-class IndividualManager(UpdateMixin, models.Manager):
+class IndividualManager(UpdateFieldsMixin, models.Manager):
     def get_queryset(self):
         return super().get_queryset()
 
@@ -114,7 +100,7 @@ class IndividualManager(UpdateMixin, models.Manager):
         return instance
 
 
-class Individual(CommonDataMixin, models.Model):
+class Individual(TimestampedModel, models.Model):
 
     user = models.ForeignKey(
         get_user_model(), related_name="individuals", on_delete=models.CASCADE
@@ -237,7 +223,7 @@ class Individual(CommonDataMixin, models.Model):
         return individual_pks
 
 
-class SourceManager(UpdateMixin, models.Manager):
+class SourceManager(UpdateFieldsMixin, models.Manager):
     def get_queryset(self):
         return super().get_queryset()
 
@@ -300,7 +286,7 @@ class SourceManager(UpdateMixin, models.Manager):
 
     def update(self, user, instance, **data):
 
-        fields = ["name", "color", "description"]
+        fields = ["name", "url", "date", "notes"]
 
         individuals = data.get("individuals")
         individuals = Individual.validate_type(individuals)
@@ -313,7 +299,7 @@ class SourceManager(UpdateMixin, models.Manager):
         return instance
 
 
-class Source(CommonDataMixin, models.Model):
+class Source(TimestampedModel, models.Model):
 
     user = models.ForeignKey(
         get_user_model(), related_name="sources", on_delete=models.CASCADE
@@ -400,7 +386,7 @@ class Source(CommonDataMixin, models.Model):
                 raise ValidationError()
 
 
-class TagManager(UpdateMixin, models.Manager):
+class TagManager(UpdateFieldsMixin, models.Manager):
     def create(self, user, **data):
         return super().create(user=user, **data)
 
@@ -414,7 +400,7 @@ class TagManager(UpdateMixin, models.Manager):
         return instance
 
 
-class Tag(CommonDataMixin, models.Model):
+class Tag(TimestampedModel, models.Model):
 
     user = models.ForeignKey(
         get_user_model(), related_name="tags", on_delete=models.CASCADE
@@ -432,7 +418,7 @@ class Tag(CommonDataMixin, models.Model):
         return f"<{self.__class__.__name__}:{self.name}>"
 
 
-class CollectionManager(UpdateMixin, models.Manager):
+class CollectionManager(UpdateFieldsMixin, models.Manager):
     def create(self, user, **data):
         return super().create(user=user, **data)
 
@@ -446,7 +432,7 @@ class CollectionManager(UpdateMixin, models.Manager):
         return instance
 
 
-class Collection(CommonDataMixin, models.Model):
+class Collection(TimestampedModel, models.Model):
 
     user = models.ForeignKey(
         get_user_model(), related_name="collections", on_delete=models.CASCADE
@@ -466,7 +452,7 @@ class Collection(CommonDataMixin, models.Model):
         return f"<{self.__class__.__name__}:{self.name}>"
 
 
-class OriginManager(UpdateMixin, models.Manager):
+class OriginManager(UpdateFieldsMixin, models.Manager):
     def create(self, user, **data):
         return super().create(user=user, **data)
 
@@ -480,7 +466,7 @@ class OriginManager(UpdateMixin, models.Manager):
         return instance
 
 
-class Origin(CommonDataMixin, models.Model):
+class Origin(TimestampedModel, models.Model):
 
     user = models.ForeignKey(
         get_user_model(), related_name="origins", on_delete=models.CASCADE
@@ -546,7 +532,7 @@ class MediaManager:
             return "misc"
 
 
-class NodeManager(UpdateMixin, models.Manager):
+class NodeManager(UpdateFieldsMixin, models.Manager):
     def get_queryset(self):
         return super().get_queryset()
 
@@ -653,7 +639,7 @@ class NodeManager(UpdateMixin, models.Manager):
         _obj.origin = origin_obj
 
 
-class Node(CommonDataMixin, models.Model):
+class Node(TimestampedModel, models.Model):
 
     user = models.ForeignKey(
         get_user_model(), related_name="nodes", on_delete=models.CASCADE
