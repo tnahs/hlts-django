@@ -7,23 +7,33 @@ from .models import Collection, Individual, Node, Origin, Source, Tag
 
 class MetadataMixin:
     def _get_metadata(
-        self, obj, self_basename, connection_queryset, connection_basename, request
+        self, obj, obj_view, connection_queryset, connection_view, request
     ):
-        self_view = f"{self_basename}-detail"
-        connection_view = f"{connection_basename}-detail"
+        # TODO: Make this accept connection_queryset and _view as a list.
+        # TODO: Make "pk" customizable
 
-        api_url = reverse(self_view, args=[obj.pk], request=request)
+        url = reverse(obj_view, kwargs={"pk": obj.pk})
         connections_count = connection_queryset.count()
         connections = [
-            reverse(connection_view, args=[n.pk], request=request)
+            reverse(connection_view, args=[n.pk])  # , request=request)
             for n in connection_queryset
         ]
 
         return {
-            "api_url": api_url,
-            f"{connection_basename}_connections_count": connections_count,
-            f"{connection_basename}_connections": connections,
+            "url": url,
+            "connections_count": connections_count,
+            "connections": connections,
         }
+
+
+class CreateUpdateMixin:
+    def create(self, validated_data):
+        user = validated_data.pop("user")
+        return self.Meta.model.objects.create(user, **validated_data)
+
+    def update(self, instance, validated_data):
+        user = validated_data.pop("user")
+        return self.Meta.model.objects.update(user, instance, **validated_data)
 
 
 HiddenCurrentUserField = serializers.HiddenField(
@@ -79,7 +89,7 @@ class UniqueToUserField(serializers.RelatedField):
         return getattr(obj, self._unique_field)
 
 
-class IndividualSerializer(MetadataMixin, serializers.Serializer):
+class IndividualSerializer(CreateUpdateMixin, MetadataMixin, serializers.Serializer):
 
     user = HiddenCurrentUserField
     id = serializers.ReadOnlyField()
@@ -102,13 +112,14 @@ class IndividualSerializer(MetadataMixin, serializers.Serializer):
     def get_metadata(self, obj):
         return self._get_metadata(
             obj=obj,
-            self_basename="individual",
+            obj_view="individual-detail",
             connection_queryset=obj.source_set.all(),
-            connection_basename="source",
+            connection_view="source-detail",
             request=self.context.get("request"),
         )
 
     class Meta:
+        model = Individual
         validators = [
             validators.UniqueTogetherValidator(
                 queryset=Individual.objects.all(),
@@ -117,16 +128,8 @@ class IndividualSerializer(MetadataMixin, serializers.Serializer):
             )
         ]
 
-    def create(self, validated_data):
-        user = validated_data.pop("user")
-        return Individual.objects.create(user, **validated_data)
 
-    def update(self, instance, validated_data):
-        user = validated_data.pop("user")
-        return Individual.objects.update(user, instance, **validated_data)
-
-
-class SourceSerializer(MetadataMixin, serializers.Serializer):
+class SourceSerializer(CreateUpdateMixin, MetadataMixin, serializers.Serializer):
 
     id = serializers.ReadOnlyField()
     name = serializers.CharField(max_length=256, allow_blank=True)
@@ -148,11 +151,14 @@ class SourceSerializer(MetadataMixin, serializers.Serializer):
     def get_metadata(self, obj):
         return self._get_metadata(
             obj=obj,
-            self_basename="source",
+            obj_view="source-detail",
             connection_queryset=obj.node_set.all(),
-            connection_basename="node",
+            connection_view="node-detail",
             request=self.context.get("request"),
         )
+
+    class Meta:
+        model = Source
 
     def validate(self, data):
         """ See apps.nodes.models.Source """
@@ -176,16 +182,8 @@ class SourceSerializer(MetadataMixin, serializers.Serializer):
 
         return data
 
-    def create(self, validated_data):
-        user = validated_data.pop("user")
-        return Source.objects.create(user, **validated_data)
 
-    def update(self, instance, validated_data):
-        user = validated_data.pop("user")
-        return Source.objects.update(user, instance, **validated_data)
-
-
-class TagSerializer(MetadataMixin, serializers.Serializer):
+class TagSerializer(CreateUpdateMixin, MetadataMixin, serializers.Serializer):
 
     user = HiddenCurrentUserField
     id = serializers.ReadOnlyField()
@@ -199,13 +197,14 @@ class TagSerializer(MetadataMixin, serializers.Serializer):
     def get_metadata(self, obj):
         return self._get_metadata(
             obj=obj,
-            self_basename="tag",
+            obj_view="tag-detail",
             connection_queryset=obj.node_set.all(),
-            connection_basename="node",
+            connection_view="node-detail",
             request=self.context.get("request"),
         )
 
     class Meta:
+        model = Tag
         validators = [
             validators.UniqueTogetherValidator(
                 queryset=Tag.objects.all(),
@@ -214,16 +213,8 @@ class TagSerializer(MetadataMixin, serializers.Serializer):
             )
         ]
 
-    def create(self, validated_data):
-        user = validated_data.pop("user")
-        return Tag.objects.create(user, **validated_data)
 
-    def update(self, instance, validated_data):
-        user = validated_data.pop("user")
-        return Tag.objects.update(user, instance, **validated_data)
-
-
-class CollectionSerializer(MetadataMixin, serializers.Serializer):
+class CollectionSerializer(CreateUpdateMixin, MetadataMixin, serializers.Serializer):
 
     user = HiddenCurrentUserField
     id = serializers.ReadOnlyField()
@@ -239,13 +230,14 @@ class CollectionSerializer(MetadataMixin, serializers.Serializer):
     def get_metadata(self, obj):
         return self._get_metadata(
             obj=obj,
-            self_basename="collection",
+            obj_view="collection-detail",
             connection_queryset=obj.node_set.all(),
-            connection_basename="node",
+            connection_view="node-detail",
             request=self.context.get("request"),
         )
 
     class Meta:
+        model = Collection
         validators = [
             validators.UniqueTogetherValidator(
                 queryset=Collection.objects.all(),
@@ -254,16 +246,8 @@ class CollectionSerializer(MetadataMixin, serializers.Serializer):
             )
         ]
 
-    def create(self, validated_data):
-        user = validated_data.pop("user")
-        return Collection.objects.create(user, **validated_data)
 
-    def update(self, instance, validated_data):
-        user = validated_data.pop("user")
-        return Collection.objects.update(user, instance, **validated_data)
-
-
-class OriginSerializer(MetadataMixin, serializers.Serializer):
+class OriginSerializer(CreateUpdateMixin, MetadataMixin, serializers.Serializer):
 
     user = HiddenCurrentUserField
     id = serializers.ReadOnlyField()
@@ -277,13 +261,14 @@ class OriginSerializer(MetadataMixin, serializers.Serializer):
     def get_metadata(self, obj):
         return self._get_metadata(
             obj=obj,
-            self_basename="origin",
+            obj_view="origin-detail",
             connection_queryset=obj.node_set.all(),
-            connection_basename="node",
+            connection_view="node-detail",
             request=self.context.get("request"),
         )
 
     class Meta:
+        model = Origin
         validators = [
             validators.UniqueTogetherValidator(
                 queryset=Origin.objects.all(),
@@ -292,19 +277,11 @@ class OriginSerializer(MetadataMixin, serializers.Serializer):
             )
         ]
 
-    def create(self, validated_data):
-        user = validated_data.pop("user")
-        return Origin.objects.create(user, **validated_data)
-
-    def update(self, instance, validated_data):
-        user = validated_data.pop("user")
-        return Origin.objects.update(user, instance, **validated_data)
-
 
 #
 
 
-class NestedSourceSerializer(MetadataMixin, serializers.Serializer):
+class NestedSourceSerializer(CreateUpdateMixin, MetadataMixin, serializers.Serializer):
 
     name = serializers.CharField(max_length=256, allow_blank=True)
     individuals = UniqueToUserField(
@@ -319,7 +296,7 @@ class NestedSourceSerializer(MetadataMixin, serializers.Serializer):
     notes = serializers.CharField(allow_blank=True)
 
 
-class NodeSerializer(MetadataMixin, serializers.Serializer):
+class NodeSerializer(CreateUpdateMixin, MetadataMixin, serializers.Serializer):
 
     id = serializers.UUIDField(allow_null=True)
     text = serializers.CharField(allow_blank=True)
@@ -361,11 +338,14 @@ class NodeSerializer(MetadataMixin, serializers.Serializer):
     def get_metadata(self, obj):
         return self._get_metadata(
             obj=obj,
-            self_basename="node",
+            obj_view="node-detail",
             connection_queryset=obj.related.all() | obj.auto_related.all(),
-            connection_basename="node",
+            connection_view="node-detail",
             request=self.context.get("request"),
         )
+
+    class Meta:
+        model = Node
 
     def validate(self, data):
 
@@ -384,14 +364,6 @@ class NodeSerializer(MetadataMixin, serializers.Serializer):
             data.pop("date_modified", None)
 
         return data
-
-    def create(self, validated_data):
-        user = validated_data.pop("user")
-        return Node.objects.create(user, **validated_data)
-
-    def update(self, instance, validated_data):
-        user = validated_data.pop("user")
-        return Node.objects.update(user, instance, **validated_data)
 
 
 class MergeSerializer(MetadataMixin, serializers.Serializer):

@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 # https://stackoverflow.com/a/49872353
 
 import pathlib
